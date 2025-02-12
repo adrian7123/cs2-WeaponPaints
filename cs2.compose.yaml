@@ -43,5 +43,9 @@ services:
       - CS2_LOG_MONEY=0 # Turns money logging on/off: (0=off, 1=on)
       - CS2_LOG_DETAIL=0 # Combat damage logging: (0=disabled, 1=enemy, 2=friendly, 3=all)
       - CS2_LOG_ITEMS=0 # Turns item logging on/off: (0=off, 1=on)
+    ports:
+      - "27015:27015/tcp"
+      - "27015:27015/udp"
+      - "27020:27020"
     volumes:
-      - D:/cs2-data:/home/steam/cs2-dedicated/
+      - D:/cs2-data :/home/steam/cs2-dedicated/
