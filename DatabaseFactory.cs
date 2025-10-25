@@ -27,14 +27,19 @@ namespace WeaponPaints
 
               if (!string.IsNullOrEmpty(config.DatabaseUser) && !string.IsNullOrEmpty(config.DatabasePassword))
               {
-                connectionString = $"mongodb://{config.DatabaseUser}:{config.DatabasePassword}@{hostPort}/{config.DatabaseName}";
+                // Add authSource=admin for admin users, or use the database name for regular users
+                var authSource = config.DatabaseUser.ToLowerInvariant() == "admin" ? "admin" : config.DatabaseName;
+                connectionString = $"mongodb://{config.DatabaseUser}:{config.DatabasePassword}@{hostPort}/{config.DatabaseName}?authSource={authSource}";
+                Console.WriteLine($"[WeaponPaints] MongoDB connection string (credentials hidden): mongodb://{config.DatabaseUser}:***@{hostPort}/{config.DatabaseName}?authSource={authSource}");
               }
               else
               {
                 connectionString = $"mongodb://{hostPort}/{config.DatabaseName}";
+                Console.WriteLine($"[WeaponPaints] MongoDB connection string: {connectionString}");
               }
             }
 
+            Console.WriteLine($"[WeaponPaints] Creating MongoDB database connection for: {config.DatabaseName}");
             return new MongoDatabase(connectionString, config.DatabaseName);
           }
 

@@ -20,12 +20,34 @@ namespace WeaponPaints
     {
       try
       {
+        Console.WriteLine($"[WeaponPaints] Testing MongoDB connection to database: {_database.DatabaseNamespace.DatabaseName}");
         await _database.RunCommandAsync((Command<BsonDocument>)"{ping:1}");
+        Console.WriteLine($"[WeaponPaints] MongoDB connection successful!");
         return true;
+      }
+      catch (MongoDB.Driver.MongoAuthenticationException authEx)
+      {
+        Console.WriteLine($"[WeaponPaints] MongoDB Authentication Error: {authEx.Message}");
+        Console.WriteLine($"[WeaponPaints] Check your MongoDB credentials and authentication database.");
+        Console.WriteLine($"[WeaponPaints] Common solutions:");
+        Console.WriteLine($"[WeaponPaints] 1. Verify username and password are correct");
+        Console.WriteLine($"[WeaponPaints] 2. Add '?authSource=admin' to your connection string");
+        Console.WriteLine($"[WeaponPaints] 3. Use the correct authentication database");
+        return false;
+      }
+      catch (MongoDB.Driver.MongoConnectionException connEx)
+      {
+        Console.WriteLine($"[WeaponPaints] MongoDB Connection Error: {connEx.Message}");
+        Console.WriteLine($"[WeaponPaints] Check your MongoDB host and port configuration.");
+        return false;
       }
       catch (Exception ex)
       {
-        Console.WriteLine($"[WeaponPaints] Unable to connect to MongoDB database: {ex.Message}");
+        Console.WriteLine($"[WeaponPaints] MongoDB Error: {ex.GetType().Name}: {ex.Message}");
+        if (ex.InnerException != null)
+        {
+          Console.WriteLine($"[WeaponPaints] Inner Exception: {ex.InnerException.Message}");
+        }
         return false;
       }
     }
@@ -61,11 +83,23 @@ namespace WeaponPaints
         await pinsCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerPin>(
             Builders<PlayerPin>.IndexKeys.Ascending(x => x.SteamId)));
 
+        Console.WriteLine($"[WeaponPaints] MongoDB collections and indexes created successfully!");
         return true;
+      }
+      catch (MongoDB.Driver.MongoAuthenticationException authEx)
+      {
+        Console.WriteLine($"[WeaponPaints] MongoDB Authentication Error during index creation: {authEx.Message}");
+        Console.WriteLine($"[WeaponPaints] The connection worked but authentication failed during operations.");
+        Console.WriteLine($"[WeaponPaints] This usually means the user doesn't have write permissions on the database.");
+        return false;
       }
       catch (Exception ex)
       {
-        Console.WriteLine($"[WeaponPaints] Error creating MongoDB collections/indexes: {ex.Message}");
+        Console.WriteLine($"[WeaponPaints] Error creating MongoDB collections/indexes: {ex.GetType().Name}: {ex.Message}");
+        if (ex.InnerException != null)
+        {
+          Console.WriteLine($"[WeaponPaints] Inner Exception: {ex.InnerException.Message}");
+        }
         return false;
       }
     }

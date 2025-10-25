@@ -3,7 +3,6 @@ using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Menu;
 using Dapper;
 using MenuManager;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -19,11 +18,21 @@ namespace WeaponPaints
 
       try
       {
+        Console.WriteLine("[WeaponPaints] Testing database connection...");
+        var connectionTest = await WeaponPaints.Database.TestConnectionAsync();
+        if (!connectionTest)
+        {
+          throw new Exception("[WeaponPaints] Unable to connect to database!");
+        }
+
+        Console.WriteLine("[WeaponPaints] Creating database tables/collections...");
         var success = await WeaponPaints.Database.CreateTablesAsync();
         if (!success)
         {
           throw new Exception("[WeaponPaints] Unable to create tables!");
         }
+
+        Console.WriteLine("[WeaponPaints] Database setup completed successfully!");
       }
       catch (Exception ex)
       {
@@ -38,7 +47,7 @@ namespace WeaponPaints
       return player is { IsValid: true, IsBot: false, IsHLTV: false, UserId: not null };
     }
 
-    internal static void LoadSkinsFromFile(string filePath, ILogger logger)
+    internal static void LoadSkinsFromFile(string filePath)
     {
       var json = File.ReadAllText(filePath);
       try
@@ -48,11 +57,11 @@ namespace WeaponPaints
       }
       catch (FileNotFoundException)
       {
-        logger?.LogError("Not found \"skins.json\" file");
+        Console.WriteLine("[WeaponPaints] Not found \"skins.json\" file");
       }
     }
 
-    internal static void LoadPinsFromFile(string filePath, ILogger logger)
+    internal static void LoadPinsFromFile(string filePath)
     {
       var json = File.ReadAllText(filePath);
       try
@@ -62,11 +71,11 @@ namespace WeaponPaints
       }
       catch (FileNotFoundException)
       {
-        logger?.LogError("Not found \"pins.json\" file");
+        Console.WriteLine("[WeaponPaints] Not found \"pins.json\" file");
       }
     }
 
-    internal static void LoadGlovesFromFile(string filePath, ILogger logger)
+    internal static void LoadGlovesFromFile(string filePath)
     {
       try
       {
@@ -76,11 +85,11 @@ namespace WeaponPaints
       }
       catch (FileNotFoundException)
       {
-        logger?.LogError("Not found \"gloves.json\" file");
+        Console.WriteLine("[WeaponPaints] Not found \"gloves.json\" file");
       }
     }
 
-    internal static void LoadAgentsFromFile(string filePath, ILogger logger)
+    internal static void LoadAgentsFromFile(string filePath)
     {
       try
       {
@@ -90,11 +99,11 @@ namespace WeaponPaints
       }
       catch (FileNotFoundException)
       {
-        logger?.LogError("Not found \"agents.json\" file");
+        Console.WriteLine("[WeaponPaints] Not found \"agents.json\" file");
       }
     }
 
-    internal static void LoadMusicFromFile(string filePath, ILogger logger)
+    internal static void LoadMusicFromFile(string filePath)
     {
       try
       {
@@ -104,7 +113,7 @@ namespace WeaponPaints
       }
       catch (FileNotFoundException)
       {
-        logger?.LogError("Not found \"music.json\" file");
+        Console.WriteLine("[WeaponPaints] Not found \"music.json\" file");
       }
     }
 
@@ -143,7 +152,7 @@ namespace WeaponPaints
       return menu;
     }
 
-    internal static async Task CheckVersion(string version, ILogger logger)
+    internal static async Task CheckVersion(string version)
     {
       using HttpClient client = new();
 
@@ -161,28 +170,28 @@ namespace WeaponPaints
           switch (comparisonResult)
           {
             case < 0:
-              logger.LogWarning("Plugin is outdated! Check https://github.com/Nereziel/cs2-WeaponPaints");
+              Console.WriteLine("[WeaponPaints] Plugin is outdated! Check https://github.com/Nereziel/cs2-WeaponPaints");
               break;
             case > 0:
-              logger.LogInformation("Probably dev version detected");
+              Console.WriteLine("[WeaponPaints] Probably dev version detected");
               break;
             default:
-              logger.LogInformation("Plugin is up to date");
+              Console.WriteLine("[WeaponPaints] Plugin is up to date");
               break;
           }
         }
         else
         {
-          logger.LogWarning("Failed to check version");
+          Console.WriteLine("[WeaponPaints] Failed to check version");
         }
       }
       catch (HttpRequestException ex)
       {
-        logger.LogError(ex, "Failed to connect to the version server.");
+        Console.WriteLine($"[WeaponPaints] Failed to connect to the version server: {ex.Message}");
       }
       catch (Exception ex)
       {
-        logger.LogError(ex, "An error occurred while checking version.");
+        Console.WriteLine($"[WeaponPaints] An error occurred while checking version: {ex.Message}");
       }
     }
 
