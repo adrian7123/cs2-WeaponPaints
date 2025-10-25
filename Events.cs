@@ -85,7 +85,7 @@ namespace WeaponPaints
 			Task.Run(async () => 
 			{
 				if (WeaponSync != null)
-					await WeaponSync.SyncStatTrakToDatabase(playerInfo);
+					await WeaponSynchronization.SyncStatTrakToDatabase(playerInfo);
 
 				if (Config.Additional.SkinEnabled)
 				{

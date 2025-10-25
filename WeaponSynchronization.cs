@@ -1,5 +1,3 @@
-﻿using Dapper;
-using MySqlConnector;
 using System.Collections.Concurrent;
 using CounterStrikeSharp.API.Modules.Utils;
 using System.Globalization;
@@ -9,9 +7,9 @@ namespace WeaponPaints;
 internal class WeaponSynchronization
 {
 	private readonly WeaponPaintsConfig _config;
-	private readonly Database _database;
+	private readonly IDatabase _database;
 
-	internal WeaponSynchronization(Database database, WeaponPaintsConfig config)
+	internal WeaponSynchronization(IDatabase database, WeaponPaintsConfig config)
 	{
 		_database = database;
 		_config = config;
@@ -21,20 +19,18 @@ internal class WeaponSynchronization
 	{
 		try
 		{
-			await using var connection = await _database.GetConnectionAsync();
-
 			if (_config.Additional.KnifeEnabled)
-				GetKnifeFromDatabase(player, connection);
+				await GetKnifeFromDatabase(player);
 			if (_config.Additional.GloveEnabled)
-				GetGloveFromDatabase(player, connection);
+				await GetGloveFromDatabase(player);
 			if (_config.Additional.AgentEnabled)
-				GetAgentFromDatabase(player, connection);
+				await GetAgentFromDatabase(player);
 			if (_config.Additional.MusicEnabled)
-				GetMusicFromDatabase(player, connection);
+				await GetMusicFromDatabase(player);
 			if (_config.Additional.SkinEnabled)
-				GetWeaponPaintsFromDatabase(player, connection);
+				await GetWeaponPaintsFromDatabase(player);
 			if (_config.Additional.PinsEnabled)
-				GetPinsFromDatabase(player, connection);
+				await GetPinsFromDatabase(player);
 		}
 		catch (Exception ex)
 		{
@@ -43,42 +39,44 @@ internal class WeaponSynchronization
 		}
 	}
 
-	private void GetKnifeFromDatabase(PlayerInfo? player, MySqlConnection connection)
+	internal async Task GetKnifeFromDatabase(PlayerInfo? player)
 	{
 		try
 		{
 			if (!_config.Additional.KnifeEnabled || string.IsNullOrEmpty(player?.SteamId))
 				return;
 
-			const string query = "SELECT `knife`, `weapon_team` FROM `wp_player_knife` WHERE `steamid` = @steamid ORDER BY `weapon_team` ASC";
-			var rows = connection.Query<dynamic>(query, new { steamid = player.SteamId }); // Retrieve all records for the player
+			var rows = await _database.GetPlayerKnivesAsync(player.SteamId);
 
 			foreach (var row in rows)
 			{
 				// Check if knife is null or empty
-				if (string.IsNullOrEmpty(row.knife)) continue;
+				if (!row.TryGetValue("knife", out var knifeObj) || string.IsNullOrEmpty(knifeObj?.ToString())) continue;
+
+				var knife = knifeObj.ToString();
+				if (!row.TryGetValue("weapon_team", out var teamObj)) continue;
 
 				// Determine the weapon team based on the query result
-				CsTeam weaponTeam = (int)row.weapon_team switch
+				CsTeam weaponTeam = Convert.ToInt32(teamObj) switch
 				{
 					2 => CsTeam.Terrorist,
 					3 => CsTeam.CounterTerrorist,
 					_ => CsTeam.None,
 				};
 
-				// Get or create entries for the player’s slot
+				// Get or create entries for the player's slot
 				var playerKnives = WeaponPaints.GPlayersKnife.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, string>());
 
 				if (weaponTeam == CsTeam.None)
 				{
 					// Assign knife to both teams if weaponTeam is None
-					playerKnives[CsTeam.Terrorist] = row.knife;
-					playerKnives[CsTeam.CounterTerrorist] = row.knife;
+					playerKnives[CsTeam.Terrorist] = knife!;
+					playerKnives[CsTeam.CounterTerrorist] = knife!;
 				}
 				else
 				{
 					// Assign knife to the specific team
-					playerKnives[weaponTeam] = row.knife;
+					playerKnives[weaponTeam] = knife!;
 				}
 			}
 		}
@@ -88,70 +86,91 @@ internal class WeaponSynchronization
 		}
 	}
 
-	private void GetGloveFromDatabase(PlayerInfo? player, MySqlConnection connection)
+	internal async Task GetGloveFromDatabase(PlayerInfo? player)
 	{
 		try
 		{
 			if (!_config.Additional.GloveEnabled || string.IsNullOrEmpty(player?.SteamId))
 				return;
 
-			const string query = "SELECT `weapon_defindex`, `weapon_team` FROM `wp_player_gloves` WHERE `steamid` = @steamid ORDER BY `weapon_team` ASC";
-			var rows = connection.Query<dynamic>(query, new { steamid = player.SteamId }); // Retrieve all records for the player
+			var rows = await _database.GetPlayerGlovesAsync(player.SteamId);
 
 			foreach (var row in rows)
 			{
 				// Check if weapon_defindex is null
-				if (row.weapon_defindex == null) continue;
+				if (!row.TryGetValue("weapon_defindex", out var defindexObj)) continue;
+				if (!row.TryGetValue("weapon_team", out var teamObj)) continue;
+
 				// Determine the weapon team based on the query result
 				var playerGloves = WeaponPaints.GPlayersGlove.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ushort>());
-				CsTeam weaponTeam = (int)row.weapon_team switch
+				CsTeam weaponTeam = Convert.ToInt32(teamObj) switch
 				{
 					2 => CsTeam.Terrorist,
 					3 => CsTeam.CounterTerrorist,
 					_ => CsTeam.None,
 				};
 
-				// Get or create entries for the player’s slot
+				var weaponDefindex = Convert.ToUInt16(defindexObj);
 
 				if (weaponTeam == CsTeam.None)
 				{
 					// Assign glove ID to both teams if weaponTeam is None
-					playerGloves[CsTeam.Terrorist] = (ushort)row.weapon_defindex;
-					playerGloves[CsTeam.CounterTerrorist] = (ushort)row.weapon_defindex;
+					playerGloves[CsTeam.Terrorist] = weaponDefindex;
+					playerGloves[CsTeam.CounterTerrorist] = weaponDefindex;
 				}
 				else
 				{
 					// Assign glove ID to the specific team
-					playerGloves[weaponTeam] = (ushort)row.weapon_defindex;
+					playerGloves[weaponTeam] = weaponDefindex;
 				}
 			}
 		}
 		catch (Exception ex)
 		{
-			Utility.Log($"An error occurred in GetGlovesFromDatabase: {ex.Message}");
+			Utility.Log($"An error occurred in GetGloveFromDatabase: {ex.Message}");
 		}
 	}
 
-	private void GetAgentFromDatabase(PlayerInfo? player, MySqlConnection connection)
+	internal async Task GetAgentFromDatabase(PlayerInfo? player)
 	{
 		try
 		{
 			if (!_config.Additional.AgentEnabled || string.IsNullOrEmpty(player?.SteamId))
 				return;
 
-			const string query = "SELECT `agent_ct`, `agent_t` FROM `wp_player_agents` WHERE `steamid` = @steamid";
-			var agentData = connection.QueryFirstOrDefault<(string, string)>(query, new { steamid = player.SteamId });
+			var rows = await _database.GetPlayerAgentsAsync(player.SteamId);
 
-			if (agentData == default) return;
-			var agentCT = agentData.Item1;
-			var agentT = agentData.Item2;
-
-			if (!string.IsNullOrEmpty(agentCT) || !string.IsNullOrEmpty(agentT))
+			foreach (var row in rows)
 			{
-				WeaponPaints.GPlayersAgent[player.Slot] = (
-					agentCT,
-					agentT
-				);
+				// Check if agent is null or empty
+				if (!row.TryGetValue("agent", out var agentObj) || string.IsNullOrEmpty(agentObj?.ToString())) continue;
+
+				var agent = agentObj.ToString();
+				if (!row.TryGetValue("weapon_team", out var teamObj)) continue;
+
+				// Determine the weapon team based on the query result
+				CsTeam weaponTeam = Convert.ToInt32(teamObj) switch
+				{
+					2 => CsTeam.Terrorist,
+					3 => CsTeam.CounterTerrorist,
+					_ => CsTeam.None,
+				};
+
+				// Get or create entries for the player's slot - using tuple structure
+				var currentAgents = WeaponPaints.GPlayersAgent.GetOrAdd(player.Slot, _ => (null, null));
+
+				if (weaponTeam == CsTeam.CounterTerrorist)
+				{
+					WeaponPaints.GPlayersAgent[player.Slot] = (agent, currentAgents.T);
+				}
+				else if (weaponTeam == CsTeam.Terrorist)
+				{
+					WeaponPaints.GPlayersAgent[player.Slot] = (currentAgents.CT, agent);
+				}
+				else // Both teams
+				{
+					WeaponPaints.GPlayersAgent[player.Slot] = (agent, agent);
+				}
 			}
 		}
 		catch (Exception ex)
@@ -160,178 +179,23 @@ internal class WeaponSynchronization
 		}
 	}
 
-	private void GetWeaponPaintsFromDatabase(PlayerInfo? player, MySqlConnection connection)
-	{
-		try
-		{
-			if (!_config.Additional.SkinEnabled || player == null || string.IsNullOrEmpty(player.SteamId))
-				return;
-				
-			var playerWeapons = WeaponPaints.GPlayerWeaponsInfo.GetOrAdd(player.Slot,
-				_ => new ConcurrentDictionary<CsTeam, ConcurrentDictionary<int, WeaponInfo>>());
-
-			// var weaponInfos = new ConcurrentDictionary<int, WeaponInfo>();
-
-			const string query = "SELECT * FROM `wp_player_skins` WHERE `steamid` = @steamid ORDER BY `weapon_team` ASC";
-			var playerSkins = connection.Query<dynamic>(query, new { steamid = player.SteamId });
-
-			foreach (var row in playerSkins)
-			{
-				int weaponDefIndex = row.weapon_defindex ?? 0;
-				int weaponPaintId = row.weapon_paint_id ?? 0;
-				float weaponWear = row.weapon_wear ?? 0f;
-				int weaponSeed = row.weapon_seed ?? 0;
-				string weaponNameTag = row.weapon_nametag ?? "";
-				bool weaponStatTrak = row.weapon_stattrak ?? false;
-				int weaponStatTrakCount = row.weapon_stattrak_count ?? 0;
-				
-				CsTeam weaponTeam = row.weapon_team switch
-				{
-					2 => CsTeam.Terrorist,
-					3 => CsTeam.CounterTerrorist,
-					_ => CsTeam.None,
-				};
-						
-				string[]? keyChainParts = row.weapon_keychain?.ToString().Split(';');
-
-				KeyChainInfo keyChainInfo = new KeyChainInfo();
-
-				if (keyChainParts!.Length == 5 &&
-				    uint.TryParse(keyChainParts[0], out uint keyChainId) &&
-				    float.TryParse(keyChainParts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float keyChainOffsetX) &&
-				    float.TryParse(keyChainParts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float keyChainOffsetY) &&
-				    float.TryParse(keyChainParts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float keyChainOffsetZ) &&
-				    uint.TryParse(keyChainParts[4], out uint keyChainSeed))
-				{
-					// Successfully parsed the values
-					keyChainInfo.Id = keyChainId;
-					keyChainInfo.OffsetX = keyChainOffsetX;
-					keyChainInfo.OffsetY = keyChainOffsetY;
-					keyChainInfo.OffsetZ = keyChainOffsetZ;
-					keyChainInfo.Seed = keyChainSeed;
-				}
-				else
-				{
-					// Failed to parse the values, default to 0
-					keyChainInfo.Id = 0;
-					keyChainInfo.OffsetX = 0f;
-					keyChainInfo.OffsetY = 0f;
-					keyChainInfo.OffsetZ = 0f;
-					keyChainInfo.Seed = 0;
-				}
-
-				// Create the WeaponInfo object
-				WeaponInfo weaponInfo = new WeaponInfo
-				{
-					Paint = weaponPaintId,
-					Seed = weaponSeed,
-					Wear = weaponWear,
-					Nametag = weaponNameTag,
-					KeyChain = keyChainInfo,
-					StatTrak = weaponStatTrak,
-					StatTrakCount = weaponStatTrakCount,
-				};
-
-				// Retrieve and parse sticker data (up to 5 slots)
-				for (int i = 0; i <= 4; i++)
-				{
-					// Access the sticker data dynamically using reflection
-					string stickerColumn = $"weapon_sticker_{i}";
-					var stickerData = ((IDictionary<string, object>)row!)[stickerColumn]; // Safely cast row to a dictionary
-
-					if (string.IsNullOrEmpty(stickerData.ToString())) continue;
-						
-					var parts = stickerData.ToString()!.Split(';');
-
-					//"id;schema;x;y;wear;scale;rotation"
-					if (parts.Length != 7 ||
-					    !uint.TryParse(parts[0], out uint stickerId) ||
-					    !uint.TryParse(parts[1], out uint stickerSchema) ||
-					    !float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float stickerOffsetX) ||
-					    !float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float stickerOffsetY) ||
-					    !float.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out float stickerWear) ||
-					    !float.TryParse(parts[5], NumberStyles.Float, CultureInfo.InvariantCulture, out float stickerScale) ||
-					    !float.TryParse(parts[6], NumberStyles.Float, CultureInfo.InvariantCulture, out float stickerRotation)) continue;
-						
-					StickerInfo stickerInfo = new StickerInfo
-					{
-						Id = stickerId,
-						Schema = stickerSchema,
-						OffsetX = stickerOffsetX,
-						OffsetY = stickerOffsetY,
-						Wear = stickerWear,
-						Scale = stickerScale,
-						Rotation = stickerRotation
-					};
-
-					weaponInfo.Stickers.Add(stickerInfo);
-				}
-					
-				if (weaponTeam == CsTeam.None)
-				{
-					// Get or create entries for both teams
-					var terroristWeapons = playerWeapons.GetOrAdd(CsTeam.Terrorist, _ => new ConcurrentDictionary<int, WeaponInfo>());
-					var counterTerroristWeapons = playerWeapons.GetOrAdd(CsTeam.CounterTerrorist, _ => new ConcurrentDictionary<int, WeaponInfo>());
-
-					// Add weaponInfo to both team weapon dictionaries
-					terroristWeapons[weaponDefIndex] = weaponInfo;
-					counterTerroristWeapons[weaponDefIndex] = weaponInfo;
-				}
-				else
-				{
-					// Add to the specific team
-					var teamWeapons = playerWeapons.GetOrAdd(weaponTeam, _ => new ConcurrentDictionary<int, WeaponInfo>());
-					teamWeapons[weaponDefIndex] = weaponInfo;
-				}
-
-				// weaponInfos[weaponDefIndex] = weaponInfo;
-			}
-
-			// WeaponPaints.GPlayerWeaponsInfo[player.Slot][weaponTeam] = weaponInfos;
-		}
-		catch (Exception ex)
-		{
-			Utility.Log($"An error occurred in GetWeaponPaintsFromDatabase: {ex.Message}");
-		}
-	}
-
-	private void GetMusicFromDatabase(PlayerInfo? player, MySqlConnection connection)
+	internal async Task GetMusicFromDatabase(PlayerInfo? player)
 	{
 		try
 		{
 			if (!_config.Additional.MusicEnabled || string.IsNullOrEmpty(player?.SteamId))
 				return;
 
-			const string query = "SELECT `music_id`, `weapon_team` FROM `wp_player_music` WHERE `steamid` = @steamid ORDER BY `weapon_team` ASC";
-			var rows = connection.Query<dynamic>(query, new { steamid = player.SteamId }); // Retrieve all records for the player
+			var rows = await _database.GetPlayerMusicAsync(player.SteamId);
 
 			foreach (var row in rows)
 			{
-				// Check if music_id is null
-				if (row.music_id == null) continue;
+				if (!row.TryGetValue("music_id", out var musicIdObj)) continue;
 
-				// Determine the weapon team based on the query result
-				CsTeam weaponTeam = (int)row.weapon_team switch
-				{
-					2 => CsTeam.Terrorist,
-					3 => CsTeam.CounterTerrorist,
-					_ => CsTeam.None,
-				};
-
-				// Get or create entries for the player’s slot
+				var musicId = Convert.ToUInt16(musicIdObj);
 				var playerMusic = WeaponPaints.GPlayersMusic.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ushort>());
-
-				if (weaponTeam == CsTeam.None)
-				{
-					// Assign music ID to both teams if weaponTeam is None
-					playerMusic[CsTeam.Terrorist] = (ushort)row.music_id;
-					playerMusic[CsTeam.CounterTerrorist] = (ushort)row.music_id;
-				}
-				else
-				{
-					// Assign music ID to the specific team
-					playerMusic[weaponTeam] = (ushort)row.music_id;
-				}
+				playerMusic[CsTeam.None] = musicId; // Music is not team-specific
+				break; // Only one music kit per player
 			}
 		}
 		catch (Exception ex)
@@ -340,43 +204,68 @@ internal class WeaponSynchronization
 		}
 	}
 
-	private void GetPinsFromDatabase(PlayerInfo? player, MySqlConnection connection)
+	internal async Task GetWeaponPaintsFromDatabase(PlayerInfo? player)
 	{
 		try
 		{
-			if (string.IsNullOrEmpty(player?.SteamId))
+			if (!_config.Additional.SkinEnabled || string.IsNullOrEmpty(player?.SteamId))
 				return;
 
-			const string query = "SELECT `id`, `weapon_team` FROM `wp_player_pins` WHERE `steamid` = @steamid ORDER BY `weapon_team` ASC";
-			var rows = connection.Query<dynamic>(query, new { steamid = player.SteamId }); // Retrieve all records for the player
+			var rows = await _database.GetPlayerWeaponSkinsAsync(player.SteamId);
 
 			foreach (var row in rows)
 			{
-				// Check if id is null
-				if (row.id == null) continue;
+				if (!row.TryGetValue("weapon_defindex", out var defindexObj) || string.IsNullOrEmpty(defindexObj?.ToString())) continue;
+				if (!row.TryGetValue("weapon_paint_id", out var paintIdObj)) continue;
 
-				// Determine the weapon team based on the query result
-				CsTeam weaponTeam = (int)row.weapon_team switch
+				var weaponDefindexStr = defindexObj.ToString()!;
+				var weaponDefindex = Convert.ToInt32(weaponDefindexStr);
+				var weaponPaintId = Convert.ToInt32(paintIdObj);
+				var weaponWear = row.TryGetValue("weapon_wear", out var wearObj) ? Convert.ToSingle(wearObj) : 0.0f;
+				var weaponSeed = row.TryGetValue("weapon_seed", out var seedObj) ? Convert.ToInt32(seedObj) : 0;
+				var weaponNametag = row.TryGetValue("weapon_nametag", out var nametagObj) ? nametagObj?.ToString() ?? string.Empty : string.Empty;
+				var weaponStattrak = row.TryGetValue("weapon_stattrak", out var stattrakObj) ? Convert.ToInt32(stattrakObj) : -1;
+
+				// Get or create entries for the player's slot - structure is nested: [slot][team][defindex]
+				var playerWeapons = WeaponPaints.GPlayerWeaponsInfo.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ConcurrentDictionary<int, WeaponInfo>>());
+				
+				// For skins, we typically use CsTeam.None since skins aren't team-specific
+				var teamWeapons = playerWeapons.GetOrAdd(CsTeam.None, _ => new ConcurrentDictionary<int, WeaponInfo>());
+
+				teamWeapons[weaponDefindex] = new WeaponInfo
 				{
-					2 => CsTeam.Terrorist,
-					3 => CsTeam.CounterTerrorist,
-					_ => CsTeam.None,
+					Paint = weaponPaintId,
+					Wear = weaponWear,
+					Seed = weaponSeed,
+					Nametag = weaponNametag,
+					StatTrak = weaponStattrak > 0,
+					StatTrakCount = weaponStattrak > 0 ? weaponStattrak : 0
 				};
+			}
+		}
+		catch (Exception ex)
+		{
+			Utility.Log($"An error occurred in GetWeaponPaintsFromDatabase: {ex.Message}");
+		}
+	}
 
-				// Get or create entries for the player’s slot
+	internal async Task GetPinsFromDatabase(PlayerInfo? player)
+	{
+		try
+		{
+			if (!_config.Additional.PinsEnabled || string.IsNullOrEmpty(player?.SteamId))
+				return;
+
+			var rows = await _database.GetPlayerPinsAsync(player.SteamId);
+
+			foreach (var row in rows)
+			{
+				if (!row.TryGetValue("pin_id", out var pinIdObj)) continue;
+
+				var pinId = Convert.ToUInt16(pinIdObj);
 				var playerPins = WeaponPaints.GPlayersPin.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ushort>());
-
-				if (weaponTeam == CsTeam.None)
-				{
-					// Assign pin ID to both teams if weaponTeam is None
-					playerPins[CsTeam.Terrorist] = (ushort)row.id;
-					playerPins[CsTeam.CounterTerrorist] = (ushort)row.id;
-				}
-				else
-				{
-					// Assign pin ID to the specific team
-					playerPins[weaponTeam] = (ushort)row.id;
-				}
+				playerPins[CsTeam.None] = pinId; // Pins are not team-specific
+				break; // Only one pin per player
 			}
 		}
 		catch (Exception ex)
@@ -385,246 +274,164 @@ internal class WeaponSynchronization
 		}
 	}
 
-	internal async Task SyncKnifeToDatabase(PlayerInfo player, string knife, CsTeam[] teams)
+	// Save methods
+
+	internal static async Task SyncKnifeToDatabase(PlayerInfo? player, CsTeam team, string knife)
 	{
-		if (!_config.Additional.KnifeEnabled || string.IsNullOrEmpty(player.SteamId) || string.IsNullOrEmpty(knife) || teams.Length == 0) return;
-
-		const string query = "INSERT INTO `wp_player_knife` (`steamid`, `weapon_team`, `knife`) VALUES(@steamid, @team, @newKnife) ON DUPLICATE KEY UPDATE `knife` = @newKnife";
-
 		try
 		{
-			await using var connection = await _database.GetConnectionAsync();
-        
-			// Loop through each team and insert/update accordingly
-			foreach (var team in teams)
-			{
-				await connection.ExecuteAsync(query, new { steamid = player.SteamId, team, newKnife = knife });
-			}
-		}
-		catch (Exception e)
-		{
-			Utility.Log($"Error syncing knife to database: {e.Message}");
-		}
-	}
-	
-	internal async Task SyncGloveToDatabase(PlayerInfo player, ushort gloveDefIndex, CsTeam[] teams)
-	{
-		// Check if the necessary conditions are met
-		if (!_config.Additional.GloveEnabled || string.IsNullOrEmpty(player.SteamId) || teams.Length == 0) 
-			return;
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
 
-		const string query = @"
-        INSERT INTO `wp_player_gloves` (`steamid`, `weapon_team`, `weapon_defindex`) 
-        VALUES(@steamid, @team, @gloveDefIndex) 
-        ON DUPLICATE KEY UPDATE `weapon_defindex` = @gloveDefIndex";
-
-		try
-		{
-			// Get a database connection
-			await using var connection = await _database.GetConnectionAsync();
-        
-			// Loop through each team and insert/update accordingly
-			foreach (var team in teams)
+			int weaponTeam = team switch
 			{
-				// Execute the SQL command for each team
-				await connection.ExecuteAsync(query, new { 
-					steamid = player.SteamId, 
-					team = (int)team, // Cast the CsTeam enum to int for insertion
-					gloveDefIndex 
-				});
-			}
+				CsTeam.Terrorist => 2,
+				CsTeam.CounterTerrorist => 3,
+				_ => 0
+			};
+
+			await WeaponPaints.Database.SavePlayerKnifeAsync(player.SteamId, knife, weaponTeam);
 		}
-		catch (Exception e)
+		catch (Exception ex)
 		{
-			// Log any exceptions that occur
-			Utility.Log($"Error syncing glove to database: {e.Message}");
+			Utility.Log($"An error occurred in SyncKnifeToDatabase: {ex.Message}");
 		}
 	}
 
-	internal async Task SyncAgentToDatabase(PlayerInfo player)
+	internal static async Task SyncGloveToDatabase(PlayerInfo? player, CsTeam team, ushort defindex)
 	{
-		if (!_config.Additional.AgentEnabled || string.IsNullOrEmpty(player.SteamId)) return;
-
-		const string query = """
-		                     					INSERT INTO `wp_player_agents` (`steamid`, `agent_ct`, `agent_t`)
-		                     					VALUES(@steamid, @agent_ct, @agent_t)
-		                     					ON DUPLICATE KEY UPDATE
-		                     						`agent_ct` = @agent_ct,
-		                     						`agent_t` = @agent_t
-		                     """;
 		try
 		{
-			await using var connection = await _database.GetConnectionAsync();
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
 
-			await connection.ExecuteAsync(query, new { steamid = player.SteamId, agent_ct = WeaponPaints.GPlayersAgent[player.Slot].CT, agent_t = WeaponPaints.GPlayersAgent[player.Slot].T });
+			int weaponTeam = team switch
+			{
+				CsTeam.Terrorist => 2,
+				CsTeam.CounterTerrorist => 3,
+				_ => 0
+			};
+
+			await WeaponPaints.Database.SavePlayerGloveAsync(player.SteamId, defindex, weaponTeam);
 		}
-		catch (Exception e)
+		catch (Exception ex)
 		{
-			Utility.Log($"Error syncing agents to database: {e.Message}");
+			Utility.Log($"An error occurred in SyncGloveToDatabase: {ex.Message}");
 		}
 	}
 
-	internal async Task SyncWeaponPaintsToDatabase(PlayerInfo player)
+	internal static async Task SyncAgentToDatabase(PlayerInfo? player, CsTeam team, string agent)
 	{
-		if (string.IsNullOrEmpty(player.SteamId) || !WeaponPaints.GPlayerWeaponsInfo.TryGetValue(player.Slot, out var teamWeaponInfos))
-			return;
-
 		try
 		{
-			await using var connection = await _database.GetConnectionAsync();
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
 
-			// Loop through each team (Terrorist and CounterTerrorist)
-			foreach (var (teamId, weaponsInfo) in teamWeaponInfos)
+			int weaponTeam = team switch
 			{
-				foreach (var (weaponDefIndex, weaponInfo) in weaponsInfo)
+				CsTeam.Terrorist => 2,
+				CsTeam.CounterTerrorist => 3,
+				_ => 0
+			};
+
+			await WeaponPaints.Database.SavePlayerAgentAsync(player.SteamId, agent, weaponTeam);
+		}
+		catch (Exception ex)
+		{
+			Utility.Log($"An error occurred in SyncAgentToDatabase: {ex.Message}");
+		}
+	}
+
+	internal static async Task SyncMusicToDatabase(PlayerInfo? player, int musicId)
+	{
+		try
+		{
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
+
+			await WeaponPaints.Database.SavePlayerMusicAsync(player.SteamId, musicId);
+		}
+		catch (Exception ex)
+		{
+			Utility.Log($"An error occurred in SyncMusicToDatabase: {ex.Message}");
+		}
+	}
+
+	internal static async Task SyncWeaponPaintToDatabase(PlayerInfo? player, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
+	{
+		try
+		{
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
+
+			await WeaponPaints.Database.SavePlayerWeaponSkinAsync(player.SteamId, weaponDefindex, weaponPaintId, weaponWear, weaponSeed, weaponNametag, weaponStattrak);
+		}
+		catch (Exception ex)
+		{
+			Utility.Log($"An error occurred in SyncWeaponPaintToDatabase: {ex.Message}");
+		}
+	}
+
+	internal static async Task SyncStatTrakToDatabase(PlayerInfo? player)
+	{
+		try
+		{
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
+			if (!WeaponPaints.GPlayerWeaponsInfo.TryGetValue(player.Slot, out var teamWeapons)) return;
+
+			foreach (var team in teamWeapons)
+			{
+				foreach (var weapon in team.Value)
 				{
-					var paintId = weaponInfo.Paint;
-					var wear = weaponInfo.Wear;
-					var seed = weaponInfo.Seed;
-
-					// Prepare the queries to check and update/insert weapon skin data
-					const string queryCheckExistence = "SELECT COUNT(*) FROM `wp_player_skins` WHERE `steamid` = @steamid AND `weapon_defindex` = @weaponDefIndex AND `weapon_team` = @weaponTeam";
-		                
-					var existingRecordCount = await connection.ExecuteScalarAsync<int>(
-						queryCheckExistence, 
-						new { steamid = player.SteamId, weaponDefIndex, weaponTeam = teamId }
-					);
-
-					string query;
-					object parameters;
-
-					if (existingRecordCount > 0)
+					if (weapon.Value.StatTrak && weapon.Value.StatTrakCount >= 0)
 					{
-						// Update existing record
-						query = "UPDATE `wp_player_skins` SET `weapon_paint_id` = @paintId, `weapon_wear` = @wear, `weapon_seed` = @seed " +
-						        "WHERE `steamid` = @steamid AND `weapon_defindex` = @weaponDefIndex AND `weapon_team` = @weaponTeam";
-						parameters = new { steamid = player.SteamId, weaponDefIndex, weaponTeam = (int)teamId, paintId, wear, seed };
+						await WeaponPaints.Database.UpdatePlayerWeaponStatTrakAsync(player.SteamId, weapon.Key.ToString(), weapon.Value.StatTrakCount);
 					}
-					else
-					{
-						// Insert new record
-						query = "INSERT INTO `wp_player_skins` (`steamid`, `weapon_defindex`, `weapon_team`, `weapon_paint_id`, `weapon_wear`, `weapon_seed`) " +
-						        "VALUES (@steamid, @weaponDefIndex, @weaponTeam, @paintId, @wear, @seed)";
-						parameters = new { steamid = player.SteamId, weaponDefIndex, weaponTeam = (int)teamId, paintId, wear, seed };
-					}
-
-					await connection.ExecuteAsync(query, parameters);
 				}
 			}
 		}
-		catch (Exception e)
+		catch (Exception ex)
 		{
-			Utility.Log($"Error syncing weapon paints to database: {e.Message}");
+			Utility.Log($"An error occurred in SyncStatTrakToDatabase: {ex.Message}");
 		}
 	}
 
-	internal async Task SyncMusicToDatabase(PlayerInfo player, ushort music, CsTeam[] teams)
+	internal static async Task SyncPinToDatabase(PlayerInfo? player, int pinId)
 	{
-		if (!_config.Additional.MusicEnabled || string.IsNullOrEmpty(player.SteamId)) return;
-
-		const string query = "INSERT INTO `wp_player_music` (`steamid`, `weapon_team`, `music_id`) VALUES(@steamid, @team, @newMusic) ON DUPLICATE KEY UPDATE `music_id` = @newMusic";
-
 		try
 		{
-			await using var connection = await _database.GetConnectionAsync();
-        
-			// Loop through each team and insert/update accordingly
-			foreach (var team in teams)
-			{
-				await connection.ExecuteAsync(query, new { steamid = player.SteamId, team, newMusic = music });
-			}
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
+
+			await WeaponPaints.Database.SavePlayerPinAsync(player.SteamId, pinId);
 		}
-		catch (Exception e)
+		catch (Exception ex)
 		{
-			Utility.Log($"Error syncing music kit to database: {e.Message}");
+			Utility.Log($"An error occurred in SyncPinToDatabase: {ex.Message}");
 		}
 	}
-		
-	internal async Task SyncPinToDatabase(PlayerInfo player, ushort pin, CsTeam[] teams)
+
+	internal async Task SyncWeaponPaintsToDatabase(PlayerInfo? player)
 	{
-		if (!_config.Additional.PinsEnabled || string.IsNullOrEmpty(player.SteamId)) return;
-
-		const string query = "INSERT INTO `wp_player_pins` (`steamid`, `weapon_team`, `id`) VALUES(@steamid, @team, @newPin) ON DUPLICATE KEY UPDATE `id` = @newPin";
-
 		try
 		{
-			await using var connection = await _database.GetConnectionAsync();
-        
-			// Loop through each team and insert/update accordingly
-			foreach (var team in teams)
+			if (WeaponPaints.Database == null || string.IsNullOrEmpty(player?.SteamId)) return;
+			if (!WeaponPaints.GPlayerWeaponsInfo.TryGetValue(player.Slot, out var teamWeapons)) return;
+
+			foreach (var team in teamWeapons)
 			{
-				await connection.ExecuteAsync(query, new { steamid = player.SteamId, team, newPin = pin });
+				foreach (var weapon in team.Value)
+				{
+					var weaponInfo = weapon.Value;
+					await WeaponPaints.Database.SavePlayerWeaponSkinAsync(
+						player.SteamId,
+						weapon.Key.ToString(),
+						weaponInfo.Paint,
+						weaponInfo.Wear,
+						weaponInfo.Seed,
+						weaponInfo.Nametag,
+						weaponInfo.StatTrak ? weaponInfo.StatTrakCount : -1
+					);
+				}
 			}
 		}
-		catch (Exception e)
+		catch (Exception ex)
 		{
-			Utility.Log($"Error syncing pin to database: {e.Message}");
+			Utility.Log($"An error occurred in SyncWeaponPaintsToDatabase: {ex.Message}");
 		}
-	}
-
-	internal async Task SyncStatTrakToDatabase(PlayerInfo player)
-	{
-	    if (WeaponPaints.WeaponSync == null || WeaponPaints.GPlayerWeaponsInfo.IsEmpty) return;
-	    if (string.IsNullOrEmpty(player.SteamId))
-	        return;
-
-	    try
-	    {
-	        await using var connection = await _database.GetConnectionAsync();
-	        await using var transaction = await connection.BeginTransactionAsync();
-
-	        // Check if player's slot exists in GPlayerWeaponsInfo
-	        if (!WeaponPaints.GPlayerWeaponsInfo.TryGetValue(player.Slot, out var teamWeaponsInfo))
-	            return;
-	        
-	        // Iterate through each team in the player's weapon info
-	        foreach (var teamInfo in teamWeaponsInfo)
-	        {
-	            // Retrieve weaponInfos for the current team
-	            var weaponInfos = teamInfo.Value;
-
-	            // Get StatTrak weapons for the current team
-	            var statTrakWeapons = weaponInfos
-		            .ToDictionary(
-			            w => w.Key, 
-			            w => (w.Value.StatTrak, w.Value.StatTrakCount) // Store both StatTrak and StatTrakCount in a tuple
-		            );
-
-	            // Check if there are StatTrak weapons to sync
-	            if (statTrakWeapons.Count == 0) continue;
-	            
-	            // Get the current team ID
-	            int weaponTeam = (int)teamInfo.Key;
-
-	            // Sync StatTrak values for the current team
-	            foreach (var (defindex, (statTrak, statTrakCount)) in statTrakWeapons)
-	            {
-		            const string query = @"
-					    UPDATE `wp_player_skins` 
-					    SET `weapon_stattrak` = @StatTrak, 
-					        `weapon_stattrak_count` = @StatTrakCount
-					    WHERE `steamid` = @steamid 
-					      AND `weapon_defindex` = @weaponDefIndex
-					      AND `weapon_team` = @weaponTeam";
-
-	                var parameters = new
-	                {
-	                    steamid = player.SteamId,
-	                    weaponDefIndex = defindex,
-	                    StatTrak = statTrak,
-	                    StatTrakCount = statTrakCount,
-	                    weaponTeam
-	                };
-
-	                await connection.ExecuteAsync(query, parameters, transaction);
-	            }
-	        }
-
-	        await transaction.CommitAsync();
-	    }
-	    catch (Exception e)
-	    {
-	        Utility.Log($"Error syncing stattrak to database: {e.Message}");
-	    }
 	}
 }

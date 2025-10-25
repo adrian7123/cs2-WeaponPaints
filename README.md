@@ -10,7 +10,7 @@ Unfinished, unoptimized and not fully functional ugly demo weapon paints plugin 
 
 ## Features
 - Changes only paint, seed and wear on weapons, knives, gloves and agents
-- MySQL based
+- MySQL and MongoDB support
 - Data syncs on player connect
 - Added command **`!wp`** to refresh skins ***(with cooldown in seconds can be configured)***
 - Added command **`!ws`** to show website
@@ -27,7 +27,7 @@ Unfinished, unoptimized and not fully functional ugly demo weapon paints plugin 
 - [PlayerSettings](https://github.com/NickFox007/PlayerSettingsCS2) - Required by MenuManagerCS2
 - [AnyBaseLibCS2](https://github.com/NickFox007/AnyBaseLibCS2) - Required by PlayerSettings
 - [MenuManagerCS2](https://github.com/NickFox007/MenuManagerCS2)
-- MySQL database
+- MySQL database OR MongoDB database
 
 ## CS2 Server
 - Have working CounterStrikeSharp (**with RUNTIME!**)
@@ -78,7 +78,77 @@ Unfinished, unoptimized and not fully functional ugly demo weapon paints plugin 
 },
 </pre></code>
 </details>
-    
+
+## MongoDB Configuration
+
+The plugin now supports MongoDB as an alternative to MySQL. To use MongoDB:
+
+### Configuration Options
+
+You can configure MongoDB in two ways:
+
+#### Option 1: Individual Parameters
+```json
+{
+	"ConfigVersion": 11,
+	"DatabaseType": "mongodb",
+	"DatabaseHost": "localhost",
+	"DatabasePort": 27017,
+	"DatabaseUser": "",
+	"DatabasePassword": "",
+	"DatabaseName": "weaponpaints",
+	"MongoConnectionString": ""
+}
+```
+
+#### Option 2: Connection String (Recommended for complex setups)
+```json
+{
+	"ConfigVersion": 11,
+	"DatabaseType": "mongodb", 
+	"MongoConnectionString": "mongodb://username:password@localhost:27017/weaponpaints?authSource=admin",
+	"DatabaseName": "weaponpaints"
+}
+```
+
+### MongoDB Setup Examples
+
+**Local MongoDB (no authentication):**
+```json
+"DatabaseType": "mongodb",
+"DatabaseHost": "localhost",
+"DatabasePort": 27017,
+"DatabaseName": "weaponpaints"
+```
+
+**MongoDB with authentication:**
+```json
+"DatabaseType": "mongodb",
+"MongoConnectionString": "mongodb://username:password@localhost:27017/weaponpaints"
+```
+
+**MongoDB Atlas (cloud):**
+```json
+"DatabaseType": "mongodb",
+"MongoConnectionString": "mongodb+srv://username:password@cluster.mongodb.net/weaponpaints?retryWrites=true&w=majority"
+```
+
+### MongoDB Features
+- Automatic collection creation with indexes
+- Support for replica sets and sharded clusters
+- Compatible with MongoDB Atlas (cloud)
+- All existing plugin features work identically
+- Data structure optimized for MongoDB document format
+
+### Migration from MySQL to MongoDB
+To migrate from MySQL to MongoDB, you'll need to:
+1. Export your MySQL data
+2. Convert the relational data to document format
+3. Import into MongoDB
+4. Update your configuration to use MongoDB
+
+**Note:** The web interface currently only supports MySQL. MongoDB support for the web interface may be added in future updates.
+
 ## Web install
 - Requires PHP >= 7.4 with curl and pdo_mysql ***(Tested on php ver **`8.2.3`** and nginx webserver)***
 - **Before using website, make sure the plugin is correctly loaded in cs2 server!** Mysql tables are created by plugin not by website.

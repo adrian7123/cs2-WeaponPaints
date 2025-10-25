@@ -71,10 +71,13 @@ namespace WeaponPaints
 
 	public class WeaponPaintsConfig : BasePluginConfig
 	{
-        [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 10;
+        [JsonPropertyName("ConfigVersion")] public override int Version { get; set; } = 11;
 
         [JsonPropertyName("SkinsLanguage")]
 		public string SkinsLanguage { get; set; } = "en";
+
+		[JsonPropertyName("DatabaseType")]
+		public string DatabaseType { get; set; } = "mysql"; // "mysql" or "mongodb"
 
 		[JsonPropertyName("DatabaseHost")]
 		public string DatabaseHost { get; set; } = "";
@@ -90,6 +93,9 @@ namespace WeaponPaints
 
 		[JsonPropertyName("DatabaseName")]
 		public string DatabaseName { get; set; } = "";
+
+		[JsonPropertyName("MongoConnectionString")]
+		public string MongoConnectionString { get; set; } = ""; // Alternative to individual connection parameters
 
 		[JsonPropertyName("CmdRefreshCooldownSeconds")]
 		public int CmdRefreshCooldownSeconds { get; set; } = 3;

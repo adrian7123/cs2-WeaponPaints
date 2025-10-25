@@ -80,11 +80,29 @@ public partial class WeaponPaints : BasePlugin, IPluginConfig<WeaponPaintsConfig
 		Config = config;
 		_config = config;
 
-		if (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1 || config.DatabaseUser.Length < 1)
+		// Validate required database configuration based on database type
+		var databaseType = config.DatabaseType.ToLowerInvariant();
+		
+		if (databaseType == "mongodb" || databaseType == "mongo")
 		{
-			Logger.LogError("You need to setup Database credentials in \"configs/plugins/WeaponPaints/WeaponPaints.json\"!");
-			Unload(false);
-			return;
+			// For MongoDB, we need either MongoConnectionString or individual parameters
+			if (string.IsNullOrEmpty(config.MongoConnectionString) && 
+			    (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1))
+			{
+				Logger.LogError("You need to setup MongoDB credentials in \"configs/plugins/WeaponPaints/WeaponPaints.json\"! Either provide MongoConnectionString or DatabaseHost/DatabaseName.");
+				Unload(false);
+				return;
+			}
+		}
+		else
+		{
+			// For MySQL (default), validate traditional parameters
+			if (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1 || config.DatabaseUser.Length < 1)
+			{
+				Logger.LogError("You need to setup MySQL Database credentials in \"configs/plugins/WeaponPaints/WeaponPaints.json\"!");
+				Unload(false);
+				return;
+			}
 		}
 
 		if (!File.Exists(Path.GetDirectoryName(Path.GetDirectoryName(ModuleDirectory)) + "/gamedata/weaponpaints.json"))
@@ -94,18 +112,17 @@ public partial class WeaponPaints : BasePlugin, IPluginConfig<WeaponPaintsConfig
 			return;
 		}
 		
-		var builder = new MySqlConnectionStringBuilder
+		// Create database instance using factory
+		try
 		{
-			Server = config.DatabaseHost,
-			UserID = config.DatabaseUser,
-			Password = config.DatabasePassword,
-			Database = config.DatabaseName,
-			Port = (uint)config.DatabasePort,
-			Pooling = true,
-			MaximumPoolSize = 640,
-		};
-
-		Database = new Database(builder.ConnectionString);
+			Database = DatabaseFactory.CreateDatabase(config);
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError($"Failed to create database connection: {ex.Message}");
+			Unload(false);
+			return;
+		}
 
 		_ = Utility.CheckDatabaseTables();
 		_localizer = Localizer;
