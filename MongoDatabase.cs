@@ -25,7 +25,7 @@ namespace WeaponPaints
       }
       catch (Exception ex)
       {
-        WeaponPaints.Instance.Logger.LogError($"Unable to connect to MongoDB database: {ex.Message}");
+        Console.WriteLine($"[WeaponPaints] Unable to connect to MongoDB database: {ex.Message}");
         return false;
       }
     }
@@ -65,7 +65,7 @@ namespace WeaponPaints
       }
       catch (Exception ex)
       {
-        WeaponPaints.Instance.Logger.LogError($"Error creating MongoDB collections/indexes: {ex.Message}");
+        Console.WriteLine($"[WeaponPaints] Error creating MongoDB collections/indexes: {ex.Message}");
         return false;
       }
     }

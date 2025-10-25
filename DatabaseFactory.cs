@@ -1,5 +1,4 @@
 using MySqlConnector;
-using Microsoft.Extensions.Logging;
 
 namespace WeaponPaints
 {
@@ -36,7 +35,6 @@ namespace WeaponPaints
               }
             }
 
-            WeaponPaints.Instance.Logger.LogInformation($"Using MongoDB database: {config.DatabaseName}");
             return new MongoDatabase(connectionString, config.DatabaseName);
           }
 
@@ -54,7 +52,6 @@ namespace WeaponPaints
               MaximumPoolSize = 640,
             };
 
-            WeaponPaints.Instance.Logger.LogInformation($"Using MySQL database: {config.DatabaseName}");
             return new MySqlDatabase(builder.ConnectionString);
           }
       }

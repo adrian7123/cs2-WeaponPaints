@@ -23,7 +23,7 @@ namespace WeaponPaints
       }
       catch (Exception ex)
       {
-        WeaponPaints.Instance.Logger.LogError($"Unable to connect to MySQL database: {ex.Message}");
+        Console.WriteLine($"[WeaponPaints] Unable to connect to MySQL database: {ex.Message}");
         throw;
       }
     }
@@ -104,7 +104,7 @@ namespace WeaponPaints
       }
       catch (Exception ex)
       {
-        WeaponPaints.Instance.Logger.LogError($"Error creating MySQL tables: {ex.Message}");
+        Console.WriteLine($"[WeaponPaints] Error creating MySQL tables: {ex.Message}");
         return false;
       }
     }
