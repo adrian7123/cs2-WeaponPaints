@@ -1,7 +1,7 @@
 # CS2 Weapon Paints
 
 ## Description
-Unfinished, unoptimized and not fully functional ugly demo weapon paints plugin for **[CSSharp](https://docs.cssharp.dev/docs/guides/getting-started.html)**. 
+Unfinished, unoptimized and not fully functional ugly demo weapon paints plugin for **[CSSharp](https://docs.cssharp.dev/docs/guides/getting-started.html)**.
 
 ## Created [Discord server](https://discord.gg/d9CvaYPSFe) where you can discuss about plugin.
 
@@ -105,7 +105,7 @@ You can configure MongoDB in two ways:
 ```json
 {
 	"ConfigVersion": 11,
-	"DatabaseType": "mongodb", 
+	"DatabaseType": "mongodb",
 	"MongoConnectionString": "mongodb://username:password@localhost:27017/weaponpaints?authSource=admin",
 	"DatabaseName": "weaponpaints"
 }

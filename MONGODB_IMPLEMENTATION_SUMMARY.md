@@ -27,7 +27,7 @@
 
 #### Configuração Flexível:
 - **Parâmetros Individuais**: Host, porta, usuário, senha separados
-- **Connection String**: String de conexão MongoDB personalizada  
+- **Connection String**: String de conexão MongoDB personalizada
 - **Suporte a diferentes ambientes**: Local, autenticado, MongoDB Atlas
 
 #### Compatibilidade Completa:
@@ -49,7 +49,7 @@
 ```json
 {
     "DatabaseType": "mongodb",
-    "DatabaseHost": "localhost", 
+    "DatabaseHost": "localhost",
     "DatabasePort": 27017,
     "DatabaseName": "weaponpaints"
 }
