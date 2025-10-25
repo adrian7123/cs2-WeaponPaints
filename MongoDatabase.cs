@@ -59,27 +59,27 @@ namespace WeaponPaints
         // MongoDB creates collections automatically when first document is inserted
         // We can create indexes here for better performance
 
-        var knifeCollection = _database.GetCollection<PlayerKnife>("player_knives");
+        var knifeCollection = _database.GetCollection<PlayerKnife>("knives");
         await knifeCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerKnife>(
             Builders<PlayerKnife>.IndexKeys.Ascending(x => x.SteamId)));
 
-        var gloveCollection = _database.GetCollection<PlayerGlove>("player_gloves");
+        var gloveCollection = _database.GetCollection<PlayerGlove>("gloves");
         await gloveCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerGlove>(
             Builders<PlayerGlove>.IndexKeys.Ascending(x => x.SteamId)));
 
-        var agentCollection = _database.GetCollection<PlayerAgent>("player_agents");
+        var agentCollection = _database.GetCollection<PlayerAgent>("agents");
         await agentCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerAgent>(
             Builders<PlayerAgent>.IndexKeys.Ascending(x => x.SteamId)));
 
-        var musicCollection = _database.GetCollection<PlayerMusic>("player_music");
+        var musicCollection = _database.GetCollection<PlayerMusic>("music");
         await musicCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerMusic>(
             Builders<PlayerMusic>.IndexKeys.Ascending(x => x.SteamId)));
 
-        var skinsCollection = _database.GetCollection<PlayerWeaponSkin>("player_weapon_skins");
+        var skinsCollection = _database.GetCollection<PlayerWeaponSkin>("skins");
         await skinsCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerWeaponSkin>(
             Builders<PlayerWeaponSkin>.IndexKeys.Ascending(x => x.SteamId)));
 
-        var pinsCollection = _database.GetCollection<PlayerPin>("player_pins");
+        var pinsCollection = _database.GetCollection<PlayerPin>("pins");
         await pinsCollection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerPin>(
             Builders<PlayerPin>.IndexKeys.Ascending(x => x.SteamId)));
 
@@ -106,7 +106,7 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerKnivesAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerKnife>("player_knives");
+      var collection = _database.GetCollection<PlayerKnife>("knives");
       var filter = Builders<PlayerKnife>.Filter.Eq(x => x.SteamId, steamId);
       var knives = await collection.Find(filter).ToListAsync();
 
@@ -119,7 +119,7 @@ namespace WeaponPaints
 
     public async Task SavePlayerKnifeAsync(string steamId, string knife, int weaponTeam)
     {
-      var collection = _database.GetCollection<PlayerKnife>("player_knives");
+      var collection = _database.GetCollection<PlayerKnife>("knives");
       var filter = Builders<PlayerKnife>.Filter.And(
           Builders<PlayerKnife>.Filter.Eq(x => x.SteamId, steamId),
           Builders<PlayerKnife>.Filter.Eq(x => x.WeaponTeam, weaponTeam)
@@ -135,7 +135,7 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerGlovesAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerGlove>("player_gloves");
+      var collection = _database.GetCollection<PlayerGlove>("gloves");
       var filter = Builders<PlayerGlove>.Filter.Eq(x => x.SteamId, steamId);
       var gloves = await collection.Find(filter).ToListAsync();
 
@@ -148,7 +148,7 @@ namespace WeaponPaints
 
     public async Task SavePlayerGloveAsync(string steamId, int weaponDefindex, int weaponTeam)
     {
-      var collection = _database.GetCollection<PlayerGlove>("player_gloves");
+      var collection = _database.GetCollection<PlayerGlove>("gloves");
       var filter = Builders<PlayerGlove>.Filter.And(
           Builders<PlayerGlove>.Filter.Eq(x => x.SteamId, steamId),
           Builders<PlayerGlove>.Filter.Eq(x => x.WeaponTeam, weaponTeam)
@@ -164,7 +164,7 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerAgentsAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerAgent>("player_agents");
+      var collection = _database.GetCollection<PlayerAgent>("agents");
       var filter = Builders<PlayerAgent>.Filter.Eq(x => x.SteamId, steamId);
       var agents = await collection.Find(filter).ToListAsync();
 
@@ -177,7 +177,7 @@ namespace WeaponPaints
 
     public async Task SavePlayerAgentAsync(string steamId, string agent, int weaponTeam)
     {
-      var collection = _database.GetCollection<PlayerAgent>("player_agents");
+      var collection = _database.GetCollection<PlayerAgent>("agents");
       var filter = Builders<PlayerAgent>.Filter.And(
           Builders<PlayerAgent>.Filter.Eq(x => x.SteamId, steamId),
           Builders<PlayerAgent>.Filter.Eq(x => x.WeaponTeam, weaponTeam)
@@ -193,7 +193,7 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerMusicAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerMusic>("player_music");
+      var collection = _database.GetCollection<PlayerMusic>("music");
       var filter = Builders<PlayerMusic>.Filter.Eq(x => x.SteamId, steamId);
       var music = await collection.Find(filter).ToListAsync();
 
@@ -205,7 +205,7 @@ namespace WeaponPaints
 
     public async Task SavePlayerMusicAsync(string steamId, int musicId)
     {
-      var collection = _database.GetCollection<PlayerMusic>("player_music");
+      var collection = _database.GetCollection<PlayerMusic>("music");
       var filter = Builders<PlayerMusic>.Filter.Eq(x => x.SteamId, steamId);
 
       var update = Builders<PlayerMusic>.Update
@@ -217,7 +217,7 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerWeaponSkinsAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerWeaponSkin>("player_weapon_skins");
+      var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
       var filter = Builders<PlayerWeaponSkin>.Filter.Eq(x => x.SteamId, steamId);
       var skins = await collection.Find(filter).ToListAsync();
 
@@ -234,7 +234,7 @@ namespace WeaponPaints
 
     public async Task SavePlayerWeaponSkinAsync(string steamId, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
     {
-      var collection = _database.GetCollection<PlayerWeaponSkin>("player_weapon_skins");
+      var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
       var filter = Builders<PlayerWeaponSkin>.Filter.And(
           Builders<PlayerWeaponSkin>.Filter.Eq(x => x.SteamId, steamId),
           Builders<PlayerWeaponSkin>.Filter.Eq(x => x.WeaponDefindex, weaponDefindex)
@@ -254,7 +254,7 @@ namespace WeaponPaints
 
     public async Task UpdatePlayerWeaponStatTrakAsync(string steamId, string weaponDefindex, int statTrakCount)
     {
-      var collection = _database.GetCollection<PlayerWeaponSkin>("player_weapon_skins");
+      var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
       var filter = Builders<PlayerWeaponSkin>.Filter.And(
           Builders<PlayerWeaponSkin>.Filter.Eq(x => x.SteamId, steamId),
           Builders<PlayerWeaponSkin>.Filter.Eq(x => x.WeaponDefindex, weaponDefindex)
@@ -266,7 +266,7 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerPinsAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerPin>("player_pins");
+      var collection = _database.GetCollection<PlayerPin>("pins");
       var filter = Builders<PlayerPin>.Filter.Eq(x => x.SteamId, steamId);
       var pins = await collection.Find(filter).ToListAsync();
 
@@ -278,7 +278,7 @@ namespace WeaponPaints
 
     public async Task SavePlayerPinAsync(string steamId, int pinId)
     {
-      var collection = _database.GetCollection<PlayerPin>("player_pins");
+      var collection = _database.GetCollection<PlayerPin>("pins");
       var filter = Builders<PlayerPin>.Filter.Eq(x => x.SteamId, steamId);
 
       var update = Builders<PlayerPin>.Update
@@ -290,7 +290,7 @@ namespace WeaponPaints
 
     public async Task<bool> PlayerExistsAsync(string steamId)
     {
-      var collection = _database.GetCollection<PlayerKnife>("player_knives");
+      var collection = _database.GetCollection<PlayerKnife>("knives");
       var filter = Builders<PlayerKnife>.Filter.Eq(x => x.SteamId, steamId);
       var count = await collection.CountDocumentsAsync(filter);
       return count > 0;
