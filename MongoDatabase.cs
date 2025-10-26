@@ -13,6 +13,7 @@ namespace WeaponPaints
     {
       _client = new MongoClient(connectionString);
       _database = _client.GetDatabase(databaseName);
+      Console.WriteLine($"[WeaponPaints] MongoDB initialized with BsonIgnoreExtraElements - unknown fields like '__v' will be ignored");
     }
 
     public async Task<bool> TestConnectionAsync()
@@ -369,6 +370,7 @@ namespace WeaponPaints
   }
 
   // MongoDB document models
+  [BsonIgnoreExtraElements]
   public class PlayerKnife
   {
     [BsonId]
@@ -384,6 +386,7 @@ namespace WeaponPaints
     public int WeaponTeam { get; set; }
   }
 
+  [BsonIgnoreExtraElements]
   public class PlayerGlove
   {
     [BsonId]
@@ -399,6 +402,7 @@ namespace WeaponPaints
     public int WeaponTeam { get; set; }
   }
 
+  [BsonIgnoreExtraElements]
   public class PlayerAgent
   {
     [BsonId]
@@ -414,6 +418,7 @@ namespace WeaponPaints
     public int WeaponTeam { get; set; }
   }
 
+  [BsonIgnoreExtraElements]
   public class PlayerMusic
   {
     [BsonId]
@@ -426,6 +431,7 @@ namespace WeaponPaints
     public int MusicId { get; set; }
   }
 
+  [BsonIgnoreExtraElements]
   public class PlayerWeaponSkin
   {
     [BsonId]
@@ -453,6 +459,7 @@ namespace WeaponPaints
     public int WeaponStattrak { get; set; }
   }
 
+  [BsonIgnoreExtraElements]
   public class PlayerPin
   {
     [BsonId]
