@@ -1,7 +1,6 @@
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using Microsoft.Extensions.Logging;
 
 namespace WeaponPaints
 {
@@ -106,19 +105,29 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerKnivesAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Getting knives for player {steamId}");
       var collection = _database.GetCollection<PlayerKnife>("knives");
       var filter = Builders<PlayerKnife>.Filter.Eq(x => x.SteamId, steamId);
       var knives = await collection.Find(filter).ToListAsync();
 
-      return knives.Select(k => new Dictionary<string, object>
+      var result = knives.Select(k => new Dictionary<string, object>
             {
                 { "knife", k.Knife ?? string.Empty },
                 { "weapon_team", k.WeaponTeam }
             }).ToArray();
+
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Found {result.Length} knives for player {steamId}");
+      foreach (var knife in result)
+      {
+        Console.WriteLine($"[WeaponPaints] Knife: {knife["knife"]}, Team: {knife["weapon_team"]}");
+      }
+
+      return result;
     }
 
     public async Task SavePlayerKnifeAsync(string steamId, string knife, int weaponTeam)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Save: Saving knife '{knife}' for player {steamId}, team {weaponTeam}");
       var collection = _database.GetCollection<PlayerKnife>("knives");
       var filter = Builders<PlayerKnife>.Filter.And(
           Builders<PlayerKnife>.Filter.Eq(x => x.SteamId, steamId),
@@ -130,24 +139,35 @@ namespace WeaponPaints
           .Set(x => x.SteamId, steamId)
           .Set(x => x.WeaponTeam, weaponTeam);
 
-      await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+      var result = await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+      Console.WriteLine($"[WeaponPaints] MongoDB Save Result: Modified {result.ModifiedCount}, Upserted {result.UpsertedId != null}");
     }
 
     public async Task<Dictionary<string, object>[]> GetPlayerGlovesAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Getting gloves for player {steamId}");
       var collection = _database.GetCollection<PlayerGlove>("gloves");
       var filter = Builders<PlayerGlove>.Filter.Eq(x => x.SteamId, steamId);
       var gloves = await collection.Find(filter).ToListAsync();
 
-      return gloves.Select(g => new Dictionary<string, object>
+      var result = gloves.Select(g => new Dictionary<string, object>
             {
                 { "weapon_defindex", g.WeaponDefindex },
                 { "weapon_team", g.WeaponTeam }
             }).ToArray();
+
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Found {result.Length} gloves for player {steamId}");
+      foreach (var glove in result)
+      {
+        Console.WriteLine($"[WeaponPaints] Glove DefIndex: {glove["weapon_defindex"]}, Team: {glove["weapon_team"]}");
+      }
+
+      return result;
     }
 
     public async Task SavePlayerGloveAsync(string steamId, int weaponDefindex, int weaponTeam)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Save: Saving glove defindex {weaponDefindex} for player {steamId}, team {weaponTeam}");
       var collection = _database.GetCollection<PlayerGlove>("gloves");
       var filter = Builders<PlayerGlove>.Filter.And(
           Builders<PlayerGlove>.Filter.Eq(x => x.SteamId, steamId),
@@ -159,20 +179,30 @@ namespace WeaponPaints
           .Set(x => x.SteamId, steamId)
           .Set(x => x.WeaponTeam, weaponTeam);
 
-      await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+      var result = await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+      Console.WriteLine($"[WeaponPaints] MongoDB Save Result: Modified {result.ModifiedCount}, Upserted {result.UpsertedId != null}");
     }
 
     public async Task<Dictionary<string, object>[]> GetPlayerAgentsAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Getting agents for player {steamId}");
       var collection = _database.GetCollection<PlayerAgent>("agents");
       var filter = Builders<PlayerAgent>.Filter.Eq(x => x.SteamId, steamId);
       var agents = await collection.Find(filter).ToListAsync();
 
-      return agents.Select(a => new Dictionary<string, object>
+      var result = agents.Select(a => new Dictionary<string, object>
             {
                 { "agent", a.Agent ?? string.Empty },
                 { "weapon_team", a.WeaponTeam }
             }).ToArray();
+
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Found {result.Length} agents for player {steamId}");
+      foreach (var agent in result)
+      {
+        Console.WriteLine($"[WeaponPaints] Agent: {agent["agent"]}, Team: {agent["weapon_team"]}");
+      }
+
+      return result;
     }
 
     public async Task SavePlayerAgentAsync(string steamId, string agent, int weaponTeam)
@@ -193,14 +223,23 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerMusicAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Getting music for player {steamId}");
       var collection = _database.GetCollection<PlayerMusic>("music");
       var filter = Builders<PlayerMusic>.Filter.Eq(x => x.SteamId, steamId);
       var music = await collection.Find(filter).ToListAsync();
 
-      return music.Select(m => new Dictionary<string, object>
+      var result = music.Select(m => new Dictionary<string, object>
             {
                 { "music_id", m.MusicId }
             }).ToArray();
+
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Found {result.Length} music items for player {steamId}");
+      foreach (var musicItem in result)
+      {
+        Console.WriteLine($"[WeaponPaints] Music ID: {musicItem["music_id"]}");
+      }
+
+      return result;
     }
 
     public async Task SavePlayerMusicAsync(string steamId, int musicId)
@@ -217,11 +256,12 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerWeaponSkinsAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Getting weapon skins for player {steamId}");
       var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
       var filter = Builders<PlayerWeaponSkin>.Filter.Eq(x => x.SteamId, steamId);
       var skins = await collection.Find(filter).ToListAsync();
 
-      return skins.Select(s => new Dictionary<string, object>
+      var result = skins.Select(s => new Dictionary<string, object>
             {
                 { "weapon_defindex", s.WeaponDefindex ?? string.Empty },
                 { "weapon_paint_id", s.WeaponPaintId },
@@ -230,10 +270,21 @@ namespace WeaponPaints
                 { "weapon_nametag", s.WeaponNametag ?? string.Empty },
                 { "weapon_stattrak", s.WeaponStattrak }
             }).ToArray();
+
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Found {result.Length} weapon skins for player {steamId}");
+      foreach (var skin in result)
+      {
+        Console.WriteLine($"[WeaponPaints] Skin - DefIndex: {skin["weapon_defindex"]}, PaintID: {skin["weapon_paint_id"]}, Wear: {skin["weapon_wear"]}, Seed: {skin["weapon_seed"]}, Nametag: {skin["weapon_nametag"]}, StatTrak: {skin["weapon_stattrak"]}");
+      }
+
+      return result;
     }
 
     public async Task SavePlayerWeaponSkinAsync(string steamId, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Save: Saving weapon skin for player {steamId}");
+      Console.WriteLine($"[WeaponPaints] Weapon Details - DefIndex: {weaponDefindex}, PaintID: {weaponPaintId}, Wear: {weaponWear}, Seed: {weaponSeed}, Nametag: '{weaponNametag}', StatTrak: {weaponStattrak}");
+
       var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
       var filter = Builders<PlayerWeaponSkin>.Filter.And(
           Builders<PlayerWeaponSkin>.Filter.Eq(x => x.SteamId, steamId),
@@ -249,7 +300,8 @@ namespace WeaponPaints
           .Set(x => x.SteamId, steamId)
           .Set(x => x.WeaponDefindex, weaponDefindex);
 
-      await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+      var result = await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+      Console.WriteLine($"[WeaponPaints] MongoDB Save Result: Modified {result.ModifiedCount}, Upserted {result.UpsertedId != null}");
     }
 
     public async Task UpdatePlayerWeaponStatTrakAsync(string steamId, string weaponDefindex, int statTrakCount)
@@ -266,14 +318,23 @@ namespace WeaponPaints
 
     public async Task<Dictionary<string, object>[]> GetPlayerPinsAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Getting pins for player {steamId}");
       var collection = _database.GetCollection<PlayerPin>("pins");
       var filter = Builders<PlayerPin>.Filter.Eq(x => x.SteamId, steamId);
       var pins = await collection.Find(filter).ToListAsync();
 
-      return pins.Select(p => new Dictionary<string, object>
+      var result = pins.Select(p => new Dictionary<string, object>
             {
                 { "pin_id", p.PinId }
             }).ToArray();
+
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Found {result.Length} pins for player {steamId}");
+      foreach (var pin in result)
+      {
+        Console.WriteLine($"[WeaponPaints] Pin ID: {pin["pin_id"]}");
+      }
+
+      return result;
     }
 
     public async Task SavePlayerPinAsync(string steamId, int pinId)
@@ -290,10 +351,13 @@ namespace WeaponPaints
 
     public async Task<bool> PlayerExistsAsync(string steamId)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Query: Checking if player {steamId} exists");
       var collection = _database.GetCollection<PlayerKnife>("knives");
       var filter = Builders<PlayerKnife>.Filter.Eq(x => x.SteamId, steamId);
       var count = await collection.CountDocumentsAsync(filter);
-      return count > 0;
+      bool exists = count > 0;
+      Console.WriteLine($"[WeaponPaints] MongoDB Result: Player {steamId} exists: {exists} (found {count} documents)");
+      return exists;
     }
 
     public async Task CreatePlayerAsync(string steamId, string playerName)
