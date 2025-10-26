@@ -16,6 +16,45 @@ namespace WeaponPaints
       Console.WriteLine($"[WeaponPaints] MongoDB initialized with BsonIgnoreExtraElements - unknown fields like '__v' will be ignored");
     }
 
+    public async Task<long> GetSkinsCollectionCountAsync()
+    {
+      try
+      {
+        var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
+        var count = await collection.CountDocumentsAsync(FilterDefinition<PlayerWeaponSkin>.Empty);
+        Console.WriteLine($"[WeaponPaints] MongoDB Diagnostic: Found {count} total documents in 'skins' collection");
+        return count;
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine($"[WeaponPaints] Error counting skins collection: {ex.Message}");
+        return -1;
+      }
+    }
+
+    public async Task<BsonDocument[]> GetRawSkinsAsync(string steamId)
+    {
+      try
+      {
+        var collection = _database.GetCollection<BsonDocument>("skins");
+        var filter = Builders<BsonDocument>.Filter.Eq("steamid", steamId);
+        var rawDocs = await collection.Find(filter).ToListAsync();
+
+        Console.WriteLine($"[WeaponPaints] Raw MongoDB documents for {steamId}:");
+        foreach (var doc in rawDocs)
+        {
+          Console.WriteLine($"[WeaponPaints] Raw doc: {doc.ToJson()}");
+        }
+
+        return rawDocs.ToArray();
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine($"[WeaponPaints] Error getting raw skins: {ex.Message}");
+        return Array.Empty<BsonDocument>();
+      }
+    }
+
     public async Task<bool> TestConnectionAsync()
     {
       try

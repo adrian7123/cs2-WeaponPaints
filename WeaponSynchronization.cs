@@ -209,43 +209,89 @@ internal class WeaponSynchronization
     try
     {
       if (!_config.Additional.SkinEnabled || string.IsNullOrEmpty(player?.SteamId))
+      {
+        Console.WriteLine($"[WeaponPaints] GetWeaponPaintsFromDatabase skipped - SkinEnabled: {_config.Additional.SkinEnabled}, SteamId: {player?.SteamId ?? "null"}");
         return;
+      }
+
+      Console.WriteLine($"[WeaponPaints] Getting weapon skins from database for player {player.SteamId}");
+
+      // Diagnostic: Check if using MongoDB and get collection stats
+      if (_database is MongoDatabase mongoDb)
+      {
+        await mongoDb.GetSkinsCollectionCountAsync();
+        await mongoDb.GetRawSkinsAsync(player.SteamId);
+      }
 
       var rows = await _database.GetPlayerWeaponSkinsAsync(player.SteamId);
+      Console.WriteLine($"[WeaponPaints] Retrieved {rows.Length} skin records from database");
 
       foreach (var row in rows)
       {
-        if (!row.TryGetValue("weapon_defindex", out var defindexObj) || string.IsNullOrEmpty(defindexObj?.ToString())) continue;
-        if (!row.TryGetValue("weapon_paint_id", out var paintIdObj)) continue;
+        Console.WriteLine($"[WeaponPaints] Processing skin row: {string.Join(", ", row.Select(kvp => $"{kvp.Key}={kvp.Value}"))}");
 
-        var weaponDefindexStr = defindexObj.ToString()!;
-        var weaponDefindex = Convert.ToInt32(weaponDefindexStr);
-        var weaponPaintId = Convert.ToInt32(paintIdObj);
-        var weaponWear = row.TryGetValue("weapon_wear", out var wearObj) ? Convert.ToSingle(wearObj) : 0.0f;
-        var weaponSeed = row.TryGetValue("weapon_seed", out var seedObj) ? Convert.ToInt32(seedObj) : 0;
-        var weaponNametag = row.TryGetValue("weapon_nametag", out var nametagObj) ? nametagObj?.ToString() ?? string.Empty : string.Empty;
-        var weaponStattrak = row.TryGetValue("weapon_stattrak", out var stattrakObj) ? Convert.ToInt32(stattrakObj) : -1;
-
-        // Get or create entries for the player's slot - structure is nested: [slot][team][defindex]
-        var playerWeapons = WeaponPaints.GPlayerWeaponsInfo.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ConcurrentDictionary<int, WeaponInfo>>());
-
-        // For skins, we typically use CsTeam.None since skins aren't team-specific
-        var teamWeapons = playerWeapons.GetOrAdd(CsTeam.None, _ => new ConcurrentDictionary<int, WeaponInfo>());
-
-        teamWeapons[weaponDefindex] = new WeaponInfo
+        if (!row.TryGetValue("weapon_defindex", out var defindexObj) || string.IsNullOrEmpty(defindexObj?.ToString()))
         {
-          Paint = weaponPaintId,
-          Wear = weaponWear,
-          Seed = weaponSeed,
-          Nametag = weaponNametag,
-          StatTrak = weaponStattrak > 0,
-          StatTrakCount = weaponStattrak > 0 ? weaponStattrak : 0
-        };
+          Console.WriteLine($"[WeaponPaints] Skipping row - missing or empty weapon_defindex");
+          continue;
+        }
+        if (!row.TryGetValue("weapon_paint_id", out var paintIdObj))
+        {
+          Console.WriteLine($"[WeaponPaints] Skipping row - missing weapon_paint_id");
+          continue;
+        }
+
+        try
+        {
+          var weaponDefindexStr = defindexObj.ToString()!;
+          var weaponDefindex = Convert.ToInt32(weaponDefindexStr);
+          var weaponPaintId = Convert.ToInt32(paintIdObj);
+          var weaponWear = row.TryGetValue("weapon_wear", out var wearObj) ? Convert.ToSingle(wearObj) : 0.0f;
+          var weaponSeed = row.TryGetValue("weapon_seed", out var seedObj) ? Convert.ToInt32(seedObj) : 0;
+          var weaponNametag = row.TryGetValue("weapon_nametag", out var nametagObj) ? nametagObj?.ToString() ?? string.Empty : string.Empty;
+          var weaponStattrak = row.TryGetValue("weapon_stattrak", out var stattrakObj) ? Convert.ToInt32(stattrakObj) : -1;
+
+          Console.WriteLine($"[WeaponPaints] Parsed skin - DefIndex: {weaponDefindex}, PaintID: {weaponPaintId}, Wear: {weaponWear}, Seed: {weaponSeed}, Nametag: '{weaponNametag}', StatTrak: {weaponStattrak}");
+
+          // Get or create entries for the player's slot - structure is nested: [slot][team][defindex]
+          var playerWeapons = WeaponPaints.GPlayerWeaponsInfo.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ConcurrentDictionary<int, WeaponInfo>>());
+
+          // For skins, we typically use CsTeam.None since skins aren't team-specific
+          var teamWeapons = playerWeapons.GetOrAdd(CsTeam.None, _ => new ConcurrentDictionary<int, WeaponInfo>());
+
+          teamWeapons[weaponDefindex] = new WeaponInfo
+          {
+            Paint = weaponPaintId,
+            Wear = weaponWear,
+            Seed = weaponSeed,
+            Nametag = weaponNametag,
+            StatTrak = weaponStattrak > 0,
+            StatTrakCount = weaponStattrak > 0 ? weaponStattrak : 0
+          };
+
+          Console.WriteLine($"[WeaponPaints] Successfully stored weapon skin for slot {player.Slot}, defindex {weaponDefindex}");
+        }
+        catch (Exception parseEx)
+        {
+          Console.WriteLine($"[WeaponPaints] Error parsing skin data: {parseEx.Message}");
+        }
+      }
+
+      // Final diagnostic: check what was loaded
+      if (WeaponPaints.GPlayerWeaponsInfo.TryGetValue(player.Slot, out var finalPlayerWeapons))
+      {
+        var totalSkins = finalPlayerWeapons.Values.SelectMany(teamWeapons => teamWeapons.Keys).Count();
+        Console.WriteLine($"[WeaponPaints] Final result: Player {player.SteamId} (slot {player.Slot}) has {totalSkins} weapons loaded in memory");
+      }
+      else
+      {
+        Console.WriteLine($"[WeaponPaints] Warning: No weapons found in memory for player {player.SteamId} (slot {player.Slot})");
       }
     }
     catch (Exception ex)
     {
-      Utility.Log($"An error occurred in GetWeaponPaintsFromDatabase: {ex.Message}");
+      Console.WriteLine($"[WeaponPaints] An error occurred in GetWeaponPaintsFromDatabase: {ex.Message}");
+      Console.WriteLine($"[WeaponPaints] Stack trace: {ex.StackTrace}");
     }
   }
 
