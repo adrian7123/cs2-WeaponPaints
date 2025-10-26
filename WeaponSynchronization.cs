@@ -250,16 +250,22 @@ internal class WeaponSynchronization
           var weaponSeed = row.TryGetValue("weapon_seed", out var seedObj) ? Convert.ToInt32(seedObj) : 0;
           var weaponNametag = row.TryGetValue("weapon_nametag", out var nametagObj) ? nametagObj?.ToString() ?? string.Empty : string.Empty;
           var weaponStattrak = row.TryGetValue("weapon_stattrak", out var stattrakObj) ? Convert.ToInt32(stattrakObj) : -1;
+          var weaponTeam = row.TryGetValue("weapon_team", out var teamObj) ? Convert.ToInt32(teamObj) : 0;
 
-          Console.WriteLine($"[WeaponPaints] Parsed skin - DefIndex: {weaponDefindex}, PaintID: {weaponPaintId}, Wear: {weaponWear}, Seed: {weaponSeed}, Nametag: '{weaponNametag}', StatTrak: {weaponStattrak}");
+          Console.WriteLine($"[WeaponPaints] Parsed skin - DefIndex: {weaponDefindex}, PaintID: {weaponPaintId}, Wear: {weaponWear}, Seed: {weaponSeed}, Nametag: '{weaponNametag}', StatTrak: {weaponStattrak}, Team: {weaponTeam}");
 
           // Get or create entries for the player's slot - structure is nested: [slot][team][defindex]
           var playerWeapons = WeaponPaints.GPlayerWeaponsInfo.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ConcurrentDictionary<int, WeaponInfo>>());
 
-          // For skins, we typically use CsTeam.None since skins aren't team-specific
-          var teamWeapons = playerWeapons.GetOrAdd(CsTeam.None, _ => new ConcurrentDictionary<int, WeaponInfo>());
+          // Convert weapon_team to CsTeam enum (0=None, 1=Spectator, 2=Terrorist, 3=CounterTerrorist)
+          var csTeam = weaponTeam switch
+          {
+            2 => CsTeam.Terrorist,
+            3 => CsTeam.CounterTerrorist,
+            _ => CsTeam.None
+          };
 
-          teamWeapons[weaponDefindex] = new WeaponInfo
+          var teamWeapons = playerWeapons.GetOrAdd(csTeam, _ => new ConcurrentDictionary<int, WeaponInfo>()); teamWeapons[weaponDefindex] = new WeaponInfo
           {
             Paint = weaponPaintId,
             Wear = weaponWear,
@@ -269,7 +275,7 @@ internal class WeaponSynchronization
             StatTrakCount = weaponStattrak > 0 ? weaponStattrak : 0
           };
 
-          Console.WriteLine($"[WeaponPaints] Successfully stored weapon skin for slot {player.Slot}, defindex {weaponDefindex}");
+          Console.WriteLine($"[WeaponPaints] Successfully stored weapon skin for slot {player.Slot}, defindex {weaponDefindex}, team {csTeam}");
         }
         catch (Exception parseEx)
         {
