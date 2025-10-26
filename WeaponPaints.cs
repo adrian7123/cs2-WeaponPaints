@@ -6,6 +6,7 @@ using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
 using MySqlConnector;
+using WeaponPaints.Services;
 
 namespace WeaponPaints;
 
@@ -65,11 +66,11 @@ public partial class WeaponPaints : BasePlugin, IPluginConfig<WeaponPaintsConfig
       }
     }
 
-    Utility.LoadSkinsFromFile(ModuleDirectory + $"/data/skins_{_config.SkinsLanguage}.json");
-    Utility.LoadGlovesFromFile(ModuleDirectory + $"/data/gloves_{_config.SkinsLanguage}.json");
-    Utility.LoadAgentsFromFile(ModuleDirectory + $"/data/agents_{_config.SkinsLanguage}.json");
-    Utility.LoadMusicFromFile(ModuleDirectory + $"/data/music_{_config.SkinsLanguage}.json");
-    Utility.LoadPinsFromFile(ModuleDirectory + $"/data/collectibles_{_config.SkinsLanguage}.json");
+    Utility.LoadSkinsFromFile(ModuleDirectory + $"/data/skins_{_config.SkinsLanguage}.json", Logger);
+    Utility.LoadGlovesFromFile(ModuleDirectory + $"/data/gloves_{_config.SkinsLanguage}.json", Logger);
+    Utility.LoadAgentsFromFile(ModuleDirectory + $"/data/agents_{_config.SkinsLanguage}.json", Logger);
+    Utility.LoadMusicFromFile(ModuleDirectory + $"/data/music_{_config.SkinsLanguage}.json", Logger);
+    Utility.LoadPinsFromFile(ModuleDirectory + $"/data/collectibles_{_config.SkinsLanguage}.json", Logger);
 
     RegisterListeners();
   }
@@ -79,56 +80,39 @@ public partial class WeaponPaints : BasePlugin, IPluginConfig<WeaponPaintsConfig
     Config = config;
     _config = config;
 
-    // Validate required database configuration based on database type
-    var databaseType = config.DatabaseType.ToLowerInvariant();
-
-    if (databaseType == "mongodb" || databaseType == "mongo")
+    if (config.ApiUrl?.Length < 1)
     {
-      // For MongoDB, we need either MongoConnectionString or individual parameters
-      if (string.IsNullOrEmpty(config.MongoConnectionString) &&
-          (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1))
-      {
-        Console.WriteLine("[WeaponPaints] You need to setup MongoDB credentials in \"configs/plugins/WeaponPaints/WeaponPaints.json\"! Either provide MongoConnectionString or DatabaseHost/DatabaseName.");
-        Unload(false);
-        return;
-      }
-    }
-    else
-    {
-      // For MySQL (default), validate traditional parameters
-      if (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1 || config.DatabaseUser.Length < 1)
-      {
-        Console.WriteLine("[WeaponPaints] You need to setup MySQL Database credentials in \"configs/plugins/WeaponPaints/WeaponPaints.json\"!");
-        Unload(false);
-        return;
-      }
+      Logger.LogError("You need to setup Database credentials in \"configs/plugins/WeaponPaints/WeaponPaints.json\"!");
+      Unload(false);
+      return;
     }
 
     if (!File.Exists(Path.GetDirectoryName(Path.GetDirectoryName(ModuleDirectory)) + "/gamedata/weaponpaints.json"))
     {
-      Console.WriteLine("[WeaponPaints] You need to upload \"weaponpaints.json\" to \"gamedata directory\"!");
+      Logger.LogError("You need to upload \"weaponpaints.json\" to \"gamedata directory\"!");
       Unload(false);
       return;
     }
 
-    // Create database instance using factory
-    try
+    if (config.ApiUrl == null)
     {
-      Database = DatabaseFactory.CreateDatabase(config);
-    }
-    catch (Exception ex)
-    {
-      Console.WriteLine($"[WeaponPaints] Failed to create database connection: {ex.Message}");
+      Logger.LogError("API URL is not set in the config file!");
       Unload(false);
       return;
     }
 
-    _ = Utility.CheckDatabaseTables();
+    var apiConfig = new ApiClientOptions
+    {
+      BaseUrl = config.ApiUrl
+    };
+
+    ApiInstance = new WeaponPaintsApiClient(apiConfig, Logger);
+
     _localizer = Localizer;
 
     Utility.Config = config;
     Utility.ShowAd(ModuleVersion);
-    Task.Run(async () => await Utility.CheckVersion(ModuleVersion));
+    Task.Run(async () => await Utility.CheckVersion(ModuleVersion, Logger));
   }
 
   public override void OnAllPluginsLoaded(bool hotReload)
@@ -155,7 +139,7 @@ public partial class WeaponPaints : BasePlugin, IPluginConfig<WeaponPaintsConfig
     catch (Exception)
     {
       MenuApi = null;
-      Console.WriteLine("[WeaponPaints] Error while loading required plugins");
+      Logger.LogError("Error while loading required plugins");
       throw;
     }
   }

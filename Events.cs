@@ -17,7 +17,7 @@ namespace WeaponPaints
       CCSPlayerController? player = @event.Userid;
 
       if (player is null || !player.IsValid || player.IsBot ||
-        WeaponSync == null || Database == null) return HookResult.Continue;
+        WeaponSync == null || ApiInstance == null) return HookResult.Continue;
 
       var playerInfo = new PlayerInfo
       {
@@ -84,7 +84,7 @@ namespace WeaponPaints
       Task.Run(async () =>
       {
         if (WeaponSync != null)
-          await WeaponSynchronization.SyncStatTrakToDatabase(playerInfo);
+          await WeaponSync.SyncStatTrak(playerInfo);
 
         if (Config.Additional.SkinEnabled)
         {
@@ -124,8 +124,8 @@ namespace WeaponPaints
     {
       if (Config.Additional is { KnifeEnabled: false, SkinEnabled: false, GloveEnabled: false }) return;
 
-      if (Database != null)
-        WeaponSync = new WeaponSynchronization(Database, Config);
+      if (ApiInstance != null)
+        WeaponSync = new WeaponSynchronization(ApiInstance, Config);
 
       _fadeSeed = 0;
       _nextItemId = MinimumCustomItemId;

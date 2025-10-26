@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Capabilities;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
@@ -7,6 +8,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using MenuManager;
 using Microsoft.Extensions.Localization;
 using Newtonsoft.Json.Linq;
+using WeaponPaints.Services;
 
 namespace WeaponPaints;
 
@@ -89,7 +91,7 @@ public partial class WeaponPaints
   private readonly Dictionary<int, string> _playerWeaponImage = new();
 
   private static readonly Dictionary<int, DateTime> CommandsCooldown = new();
-  internal static IDatabase? Database;
+  internal static WeaponPaintsApiClient? ApiInstance;
 
   private static readonly MemoryFunctionVoid<nint, string, float> CAttributeListSetOrAddAttributeValueByName = new(GameData.GetSignature("CAttributeList_SetOrAddAttributeValueByName"));
 

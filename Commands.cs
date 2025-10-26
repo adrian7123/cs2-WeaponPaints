@@ -222,7 +222,7 @@ public partial class WeaponPaints
         RefreshWeapons(player);
 
       if (WeaponSync != null)
-        _ = Task.Run(async () => await WeaponSynchronization.SyncKnifeToDatabase(playerInfo, teamsToCheck[0], knifeKey));
+        _ = Task.Run(async () => await WeaponSync.SyncKnife(playerInfo, knifeKey, teamsToCheck));
     };
     foreach (var knifePair in knivesOnly)
     {
@@ -350,7 +350,7 @@ public partial class WeaponPaints
 
           try
           {
-            _ = Task.Run(async () => await WeaponSync.SyncWeaponPaintsToDatabase(playerInfo));
+            _ = Task.Run(async () => await WeaponSync.SyncWeaponPaints(playerInfo));
           }
           catch (Exception ex)
           {
@@ -493,7 +493,7 @@ public partial class WeaponPaints
         // Sync glove to database for all teams
         foreach (var team in teamsToCheck)
         {
-          await WeaponSynchronization.SyncGloveToDatabase(playerInfo, team, (ushort)weaponDefindex);
+          await WeaponSync.SyncGlove(playerInfo, (ushort)weaponDefindex, teamsToCheck);
 
           // Check if the weapon info exists for the glove
           if (!GPlayerWeaponsInfo[playerInfo.Slot][team].TryGetValue(weaponDefindex, out var value))
@@ -508,7 +508,7 @@ public partial class WeaponPaints
           value.Seed = 0;
 
           // Sync weapon paints to database
-          await WeaponSync.SyncWeaponPaintsToDatabase(playerInfo);
+          await WeaponSync.SyncWeaponPaints(playerInfo);
         }
       });
 
@@ -604,12 +604,7 @@ public partial class WeaponPaints
         {
           _ = Task.Run(async () =>
           {
-            var team = player.TeamNum == 3 ? CsTeam.CounterTerrorist : CsTeam.Terrorist;
-            var agentModel = selectedAgent["model"]!.ToString();
-            if (!agentModel.Equals("null"))
-            {
-              await WeaponSynchronization.SyncAgentToDatabase(playerInfo, team, agentModel);
-            }
+            await WeaponSync.SyncAgent(playerInfo);
           });
         }
       }
@@ -732,7 +727,7 @@ public partial class WeaponPaints
         {
           _ = Task.Run(async () =>
           {
-            await WeaponSynchronization.SyncMusicToDatabase(playerInfo, (int)paint);
+            await WeaponSync.SyncMusic(playerInfo, (ushort)paint, teamsToCheck);
           });
         }
       }
@@ -764,7 +759,7 @@ public partial class WeaponPaints
         {
           _ = Task.Run(async () =>
           {
-            await WeaponSynchronization.SyncMusicToDatabase(playerInfo, 0);
+            await WeaponSync.SyncMusic(playerInfo, 0, teamsToCheck);
           });
         }
       }
@@ -867,7 +862,7 @@ public partial class WeaponPaints
         {
           _ = Task.Run(async () =>
           {
-            await WeaponSynchronization.SyncPinToDatabase(playerInfo, (int)paint);
+            await WeaponSync.SyncPin(playerInfo, (ushort)paint, teamsToCheck);
           });
         }
       }
@@ -899,7 +894,7 @@ public partial class WeaponPaints
         {
           _ = Task.Run(async () =>
           {
-            await WeaponSynchronization.SyncPinToDatabase(playerInfo, 0);
+            await WeaponSync.SyncPin(playerInfo, 0, teamsToCheck);
           });
         }
       }
