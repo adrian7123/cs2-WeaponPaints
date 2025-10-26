@@ -353,7 +353,7 @@ internal class WeaponSynchronization
     }
   }
 
-  internal static async Task SyncWeaponPaintToDatabase(PlayerInfo? player, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
+  internal static async Task SyncWeaponPaintToDatabase(PlayerInfo? player, int weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
   {
     try
     {
@@ -380,7 +380,7 @@ internal class WeaponSynchronization
         {
           if (weapon.Value.StatTrak && weapon.Value.StatTrakCount >= 0)
           {
-            await WeaponPaints.Database.UpdatePlayerWeaponStatTrakAsync(player.SteamId, weapon.Key.ToString(), weapon.Value.StatTrakCount);
+            await WeaponPaints.Database.UpdatePlayerWeaponStatTrakAsync(player.SteamId, weapon.Key, weapon.Value.StatTrakCount);
           }
         }
       }
@@ -419,7 +419,7 @@ internal class WeaponSynchronization
           var weaponInfo = weapon.Value;
           await WeaponPaints.Database.SavePlayerWeaponSkinAsync(
             player.SteamId,
-            weapon.Key.ToString(),
+            weapon.Key,
             weaponInfo.Paint,
             weaponInfo.Wear,
             weaponInfo.Seed,

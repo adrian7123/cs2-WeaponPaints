@@ -176,7 +176,7 @@ namespace WeaponPaints
       return result.Select(r => (Dictionary<string, object>)r).ToArray();
     }
 
-    public async Task SavePlayerWeaponSkinAsync(string steamId, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
+    public async Task SavePlayerWeaponSkinAsync(string steamId, int weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
     {
       await using var connection = await GetConnectionAsync();
       const string query = @"INSERT INTO `wp_player_skins` (`steamid`, `weapon_defindex`, `weapon_paint_id`, `weapon_wear`, `weapon_seed`, `weapon_nametag`, `weapon_stattrak`)
@@ -185,7 +185,7 @@ namespace WeaponPaints
       await connection.ExecuteAsync(query, new { steamid = steamId, weaponDefindex, weaponPaintId, weaponWear, weaponSeed, weaponNametag, weaponStattrak });
     }
 
-    public async Task UpdatePlayerWeaponStatTrakAsync(string steamId, string weaponDefindex, int statTrakCount)
+    public async Task UpdatePlayerWeaponStatTrakAsync(string steamId, int weaponDefindex, int statTrakCount)
     {
       await using var connection = await GetConnectionAsync();
       const string query = "UPDATE `wp_player_skins` SET `weapon_stattrak` = @statTrakCount WHERE `steamid` = @steamid AND `weapon_defindex` = @weaponDefindex";

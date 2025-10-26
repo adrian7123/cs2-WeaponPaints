@@ -26,8 +26,8 @@ namespace WeaponPaints
 
     // Player weapon skins operations
     Task<Dictionary<string, object>[]> GetPlayerWeaponSkinsAsync(string steamId);
-    Task SavePlayerWeaponSkinAsync(string steamId, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak);
-    Task UpdatePlayerWeaponStatTrakAsync(string steamId, string weaponDefindex, int statTrakCount);
+    Task SavePlayerWeaponSkinAsync(string steamId, int weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak);
+    Task UpdatePlayerWeaponStatTrakAsync(string steamId, int weaponDefindex, int statTrakCount);
 
     // Player pins operations
     Task<Dictionary<string, object>[]> GetPlayerPinsAsync(string steamId);

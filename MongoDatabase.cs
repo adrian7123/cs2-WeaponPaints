@@ -264,7 +264,7 @@ namespace WeaponPaints
 
       var result = skins.Select(s => new Dictionary<string, object>
             {
-                { "weapon_defindex", s.WeaponDefindex ?? string.Empty },
+                { "weapon_defindex", s.WeaponDefindex.ToString() },
                 { "weapon_paint_id", s.WeaponPaintId },
                 { "weapon_wear", s.WeaponWear },
                 { "weapon_seed", s.WeaponSeed },
@@ -281,7 +281,7 @@ namespace WeaponPaints
       return result;
     }
 
-    public async Task SavePlayerWeaponSkinAsync(string steamId, string weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
+    public async Task SavePlayerWeaponSkinAsync(string steamId, int weaponDefindex, int weaponPaintId, float weaponWear, int weaponSeed, string weaponNametag, int weaponStattrak)
     {
       Console.WriteLine($"[WeaponPaints] MongoDB Save: Saving weapon skin for player {steamId}");
       Console.WriteLine($"[WeaponPaints] Weapon Details - DefIndex: {weaponDefindex}, PaintID: {weaponPaintId}, Wear: {weaponWear}, Seed: {weaponSeed}, Nametag: '{weaponNametag}', StatTrak: {weaponStattrak}");
@@ -299,14 +299,13 @@ namespace WeaponPaints
           .Set(x => x.WeaponNametag, weaponNametag)
           .Set(x => x.WeaponStattrak, weaponStattrak)
           .Set(x => x.SteamId, steamId)
-          .Set(x => x.WeaponDefindex, weaponDefindex);
-
-      var result = await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+          .Set(x => x.WeaponDefindex, weaponDefindex); var result = await collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
       Console.WriteLine($"[WeaponPaints] MongoDB Save Result: Modified {result.ModifiedCount}, Upserted {result.UpsertedId != null}");
     }
 
-    public async Task UpdatePlayerWeaponStatTrakAsync(string steamId, string weaponDefindex, int statTrakCount)
+    public async Task UpdatePlayerWeaponStatTrakAsync(string steamId, int weaponDefindex, int statTrakCount)
     {
+      Console.WriteLine($"[WeaponPaints] MongoDB Update: Updating StatTrak count to {statTrakCount} for player {steamId}, weapon {weaponDefindex}");
       var collection = _database.GetCollection<PlayerWeaponSkin>("skins");
       var filter = Builders<PlayerWeaponSkin>.Filter.And(
           Builders<PlayerWeaponSkin>.Filter.Eq(x => x.SteamId, steamId),
@@ -314,7 +313,8 @@ namespace WeaponPaints
       );
 
       var update = Builders<PlayerWeaponSkin>.Update.Set(x => x.WeaponStattrak, statTrakCount);
-      await collection.UpdateOneAsync(filter, update);
+      var result = await collection.UpdateOneAsync(filter, update);
+      Console.WriteLine($"[WeaponPaints] MongoDB Update Result: Modified {result.ModifiedCount} documents");
     }
 
     public async Task<Dictionary<string, object>[]> GetPlayerPinsAsync(string steamId)
@@ -441,7 +441,7 @@ namespace WeaponPaints
     public string SteamId { get; set; } = string.Empty;
 
     [BsonElement("weapon_defindex")]
-    public string? WeaponDefindex { get; set; }
+    public int WeaponDefindex { get; set; }
 
     [BsonElement("weapon_paint_id")]
     public int WeaponPaintId { get; set; }
