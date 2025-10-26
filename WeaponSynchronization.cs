@@ -4,6 +4,7 @@ using CounterStrikeSharp.API.Modules.Utils;
 using System.Globalization;
 using WeaponPaints.Services;
 using System.Threading.Tasks;
+using WeaponPaints.Models;
 
 namespace WeaponPaints;
 
@@ -49,7 +50,7 @@ internal class WeaponSynchronization
       if (!_config.Additional.KnifeEnabled || string.IsNullOrEmpty(player?.SteamId))
         return;
 
-      var res = await _api.GetAsync<IEnumerable<dynamic>>("/skin/knife/?steamid=" + player.SteamId);
+      var res = await _api.GetAsync<IEnumerable<Knife>>("/skin/knife/?steamid=" + player.SteamId);
 
       foreach (var row in res.Data ?? [])
       {
@@ -57,7 +58,7 @@ internal class WeaponSynchronization
         if (string.IsNullOrEmpty(row.knife)) continue;
 
         // Determine the weapon team based on the query result
-        CsTeam weaponTeam = (int)row.weapon_team switch
+        CsTeam weaponTeam = row.weapon_team switch
         {
           2 => CsTeam.Terrorist,
           3 => CsTeam.CounterTerrorist,
@@ -93,15 +94,18 @@ internal class WeaponSynchronization
       if (!_config.Additional.GloveEnabled || string.IsNullOrEmpty(player?.SteamId))
         return;
 
-      var res = await _api.GetAsync<IEnumerable<dynamic>>("/skin/knife/?steamid=" + player.SteamId);
+      var res = await _api.GetAsync<IEnumerable<Knife>>("/skin/knife/?steamid=" + player.SteamId);
 
       foreach (var row in res.Data ?? [])
       {
         // Check if weapon_defindex is null
         if (row.weapon_defindex == null) continue;
-        // Determine the weapon team based on the query result
+
+        // Get or create entries for the player's slot
         var playerGloves = WeaponPaints.GPlayersGlove.GetOrAdd(player.Slot, _ => new ConcurrentDictionary<CsTeam, ushort>());
-        CsTeam weaponTeam = (int)row.weapon_team switch
+
+        // Determine the weapon team based on the query result
+        CsTeam weaponTeam = row.weapon_team switch
         {
           2 => CsTeam.Terrorist,
           3 => CsTeam.CounterTerrorist,
@@ -136,7 +140,7 @@ internal class WeaponSynchronization
       if (!_config.Additional.AgentEnabled || string.IsNullOrEmpty(player?.SteamId))
         return;
 
-      var res = await _api.GetAsync<IEnumerable<dynamic>>("/skin/agent/?steamid=" + player.SteamId);
+      var res = await _api.GetAsync<IEnumerable<Agent>>("/skin/agent/?steamid=" + player.SteamId);
 
       if (res.Data?.Count() <= 0)
         return;
@@ -169,17 +173,17 @@ internal class WeaponSynchronization
       var playerWeapons = WeaponPaints.GPlayerWeaponsInfo.GetOrAdd(player.Slot,
         _ => new ConcurrentDictionary<CsTeam, ConcurrentDictionary<int, WeaponInfo>>());
 
-      var res = await _api.GetAsync<IEnumerable<dynamic>>("/skin/skin/?steamid=" + player.SteamId);
+      var res = await _api.GetAsync<IEnumerable<Skin>>("/skin/skin/?steamid=" + player.SteamId);
 
       foreach (var row in res.Data ?? [])
       {
-        int weaponDefIndex = row.weapon_defindex ?? 0;
-        int weaponPaintId = row.weapon_paint_id ?? 0;
-        float weaponWear = row.weapon_wear ?? 0f;
-        int weaponSeed = row.weapon_seed ?? 0;
+        int weaponDefIndex = row.weapon_defindex;
+        int weaponPaintId = row.weapon_paint_id;
+        float weaponWear = row.weapon_wear;
+        int weaponSeed = row.weapon_seed;
         string weaponNameTag = row.weapon_nametag ?? "";
-        bool weaponStatTrak = row.weapon_stattrak ?? false;
-        int weaponStatTrakCount = row.weapon_stattrak_count ?? 0;
+        bool weaponStatTrak = row.weapon_stattrak;
+        int weaponStatTrakCount = row.weapon_stattrak_count;
 
         CsTeam weaponTeam = row.weapon_team switch
         {
@@ -188,7 +192,7 @@ internal class WeaponSynchronization
           _ => CsTeam.None,
         };
 
-        string[]? keyChainParts = row.weapon_keychain?.ToString().Split(';');
+        string[]? keyChainParts = row.weapon_keychain?.Split(';');
 
         KeyChainInfo keyChainInfo = new KeyChainInfo();
 
@@ -229,15 +233,13 @@ internal class WeaponSynchronization
         };
 
         // Retrieve and parse sticker data (up to 5 slots)
+        string?[] stickerData = [row.weapon_sticker_0, row.weapon_sticker_1, row.weapon_sticker_2, row.weapon_sticker_3, row.weapon_sticker_4];
+
         for (int i = 0; i <= 4; i++)
         {
-          // Access the sticker data dynamically using reflection
-          string stickerColumn = $"weapon_sticker_{i}";
-          var stickerData = ((IDictionary<string, object>)row!)[stickerColumn]; // Safely cast row to a dictionary
+          if (string.IsNullOrEmpty(stickerData[i])) continue;
 
-          if (string.IsNullOrEmpty(stickerData.ToString())) continue;
-
-          var parts = stickerData.ToString()!.Split(';');
+          var parts = stickerData[i]!.Split(';');
 
           //"id;schema;x;y;wear;scale;rotation"
           if (parts.Length != 7 ||
@@ -298,15 +300,12 @@ internal class WeaponSynchronization
       if (!_config.Additional.MusicEnabled || string.IsNullOrEmpty(player?.SteamId))
         return;
 
-      var res = await _api.GetAsync<IEnumerable<dynamic>>("/skin/music/?steamid=" + player.SteamId);
+      var res = await _api.GetAsync<IEnumerable<Music>>("/skin/music/?steamid=" + player.SteamId);
 
       foreach (var row in res.Data ?? [])
       {
-        // Check if music_id is null
-        if (row.music_id == null) continue;
-
         // Determine the weapon team based on the query result
-        CsTeam weaponTeam = (int)row.weapon_team switch
+        CsTeam weaponTeam = row.weapon_team switch
         {
           2 => CsTeam.Terrorist,
           3 => CsTeam.CounterTerrorist,
@@ -342,15 +341,12 @@ internal class WeaponSynchronization
       if (string.IsNullOrEmpty(player?.SteamId))
         return;
 
-      var res = await _api.GetAsync<IEnumerable<dynamic>>("/skin/pin/?steamid=" + player.SteamId);
+      var res = await _api.GetAsync<IEnumerable<Pin>>("/skin/pin/?steamid=" + player.SteamId);
 
       foreach (var row in res.Data ?? [])
       {
-        // Check if id is null
-        if (row.id == null) continue;
-
         // Determine the weapon team based on the query result
-        CsTeam weaponTeam = (int)row.weapon_team switch
+        CsTeam weaponTeam = row.weapon_team switch
         {
           2 => CsTeam.Terrorist,
           3 => CsTeam.CounterTerrorist,
