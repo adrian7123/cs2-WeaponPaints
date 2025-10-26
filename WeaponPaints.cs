@@ -5,6 +5,7 @@ using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Entities.Constants;
+using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using WeaponPaints.Services;
 

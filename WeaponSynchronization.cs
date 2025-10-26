@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using System.Collections.Concurrent;
 using CounterStrikeSharp.API.Modules.Utils;
 using System.Globalization;
